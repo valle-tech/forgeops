@@ -1,6 +1,6 @@
 {
   "name": "forgeops",
-  "version": "0.3.0",
+  "version": "0.0.3",
   "description": "CLI for scaffolding and operating IDP-style microservices",
   "type": "module",
   "files": [
