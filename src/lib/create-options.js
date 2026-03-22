@@ -1,4 +1,5 @@
 import { chooseFromList, askPort, question } from './prompt.js';
+import { getGithubToken } from './github.js';
 import {
   listAllTemplateIds,
   languageFromTemplateId,
@@ -6,10 +7,6 @@ import {
   defaultPort,
 } from './scaffold.js';
 
-/**
- * Merge CLI flags and optional interactive prompts.
- * Uses Commander's getOptionValueSource so defaults do not suppress prompts.
- */
 export async function resolveCreateOptions(opts, command) {
   const fromCli = (k) => command.getOptionValueSource(k) === 'cli';
   const interactive =
@@ -74,7 +71,28 @@ export async function resolveCreateOptions(opts, command) {
       auth = /^y(es)?$/i.test(a);
     }
 
-    return { template, language, database, messaging, ci, infra, port, auth };
+    let github;
+    if (fromCli('github')) {
+      github = Boolean(opts.github);
+    } else if (getGithubToken()) {
+      const a = await question('Create GitHub repo and push? (uses GITHUB_TOKEN) [y/N]: ');
+      github = /^y(es)?$/i.test(a);
+    } else {
+      github = false;
+    }
+
+    return {
+      template,
+      language,
+      database,
+      messaging,
+      ci,
+      infra,
+      port,
+      auth,
+      github,
+      githubPublic: Boolean(opts.githubPublic),
+    };
   }
 
   language = String(
@@ -98,5 +116,7 @@ export async function resolveCreateOptions(opts, command) {
     infra: opts.infra ?? 'none',
     port,
     auth: Boolean(opts.auth),
+    github: Boolean(opts.github),
+    githubPublic: Boolean(opts.githubPublic),
   };
 }

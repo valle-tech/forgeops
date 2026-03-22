@@ -3,3 +3,4 @@ npm-debug.log*
 .DS_Store
 _smoke/
 _t2/
+_ci_sample/

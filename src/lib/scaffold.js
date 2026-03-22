@@ -149,20 +149,6 @@ export function builtinTemplatePath(id) {
   return path.join(BUILTIN_TEMPLATES, id);
 }
 
-/**
- * @param {object} opts
- * @param {string} opts.outDir - parent directory for new folder
- * @param {string} opts.name - service name e.g. payments
- * @param {string} opts.language - node | go | python
- * @param {string} opts.database - postgres | mongo | none
- * @param {string} opts.messaging - kafka | rabbitmq | none
- * @param {boolean} opts.auth
- * @param {string} opts.ci - github | gitlab | none
- * @param {string} opts.infra - pulumi | none
- * @param {string} [opts.templatePath] - override template directory
- * @param {number} [opts.port] - HTTP port (host + container)
- * @param {string} [opts.templateId] - e.g. nestjs-clean
- */
 export async function scaffoldService(opts) {
   const name = normalizeName(opts.name);
   if (!name) throw new Error('Invalid service name');
@@ -391,86 +377,81 @@ function toYaml(obj, indent) {
   return out;
 }
 
-async function writeGitHubCI(dest, v) {
+export async function writeGitHubCI(dest, v) {
   const wfDir = path.join(dest, '.github', 'workflows');
   await mkdir(wfDir, { recursive: true });
-  let content = '';
+
+  let testSteps = '';
   if (v.language === 'go') {
-    content = `name: ci
-on:
-  push:
-    branches: [main, master]
-  pull_request:
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+    testSteps = `      - uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-      - run: go test ./...
-      - run: go build -o bin/server ./cmd/server
-  docker:
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - name: Build image
-        run: docker build -t ${v.serviceSlug}:ci .
-`;
+      - name: Test and compile
+        run: |
+          go test ./...
+          go build -o bin/server ./cmd/server`;
   } else if (v.language === 'python') {
-    content = `name: ci
-on:
-  push:
-    branches: [main, master]
-  pull_request:
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+    testSteps = `      - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: pip install -r requirements.txt pytest ruff
-      - run: pytest -q || true
-      - run: ruff check . || true
-  docker:
-    needs: [test]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - run: docker build -t ${v.serviceSlug}:ci .
-`;
+      - name: Install and test
+        run: |
+          pip install -r requirements.txt pytest ruff
+          pytest -q || true
+          ruff check . || true`;
   } else {
-    content = `name: ci
-on:
-  push:
-    branches: [main, master]
-  pull_request:
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+    testSteps = `      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - run: npm install
-      - run: npm run build
-      - run: npm test --if-present
-  docker:
-    needs: [test]
+      - name: Install, build, test
+        run: |
+          npm install
+          npm run build
+          npm test --if-present`;
+  }
+
+  const content = `name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - run: docker build -t ${v.serviceSlug}:ci .
+
+${testSteps}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: \${{ github.actor }}
+          password: \${{ secrets.GITHUB_TOKEN }}
+
+      - name: Image name (lowercase for GHCR)
+        run: |
+          echo "IMAGE_LC=ghcr.io/$(echo "$GITHUB_REPOSITORY" | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: \${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: \${{ env.IMAGE_LC }}:latest
 `;
-  }
   await writeFile(path.join(wfDir, 'ci.yml'), content, 'utf8');
 }
 
@@ -582,7 +563,6 @@ Use migrations in production (add your tool of choice).
   );
 }
 
-/** Copy user template folder into custom templates dir */
 export async function copyTemplateIntoCustom(fromDir, templateName, customRoot) {
   const id = normalizeName(templateName) || templateName;
   const to = path.join(customRoot, id);

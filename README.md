@@ -9,6 +9,7 @@ CLI for scaffolding and day-to-day operations on small backend services (NestJS,
 - **Node.js 18+**
 - For generated services and several commands: **Docker** (with Compose v2: `docker compose`)
 - Optional: **Pulumi** (`provision` / `destroy`), **GitHub CLI** (`gh`, for `delete --remove-repo` hints), **curl** (for `metrics` if you prefer it over Node’s `fetch`)
+- Optional: **git** and a **GitHub personal access token** (`GITHUB_TOKEN` or `GH_TOKEN`) when using `create service --github` to create a remote repository and push
 
 ## Install
 
@@ -58,6 +59,19 @@ forgeops create service payments
 forgeops create service payments --no-interactive --template nestjs-clean --db postgres --port 3001
 ```
 
+### Create the GitHub repo and push (optional)
+
+Export a fine-grained or classic PAT with **`repo`** scope (private repos). Then:
+
+```bash
+export GITHUB_TOKEN=ghp_xxxx   # or GH_TOKEN
+forgeops create service payments --no-interactive --template nestjs-clean --github
+```
+
+Forgeops calls the GitHub API to create **`payments-service`**, runs `git init` / `commit` / `push` to **`main`**, and records the repo URL in **`.forgeops.json`**. Use **`--github-public`** for a public repository (default is private).
+
+With a TTY and a token in the environment, you’ll be asked whether to create the repo unless you pass **`--no-interactive`** (then you must pass **`--github`** explicitly).
+
 This writes a folder named `{name}-service` under the current directory (for example `payments-service`), registers it under `~/.forgeops/registry.json`, and writes **`.forgeops.json`** inside the project (`name`, `template`, `port`, plus metadata other commands use).
 
 Run it with Compose:
@@ -90,7 +104,9 @@ forgeops create service <name> [options]
 | `--ci <provider>` | `github`, `gitlab`, or `none`. |
 | `--infra <tool>` | `pulumi` or `none`. |
 | `--output <dir>` | Parent directory for the new service folder (default: current directory). |
-| `--repo <url>` | Optional repo URL stored in the registry and `.forgeops.json`. |
+| `--repo <url>` | Optional repo URL stored in the registry and `.forgeops.json` (overridden if `--github` succeeds). |
+| `--github` | Create a GitHub repo and push the scaffold (requires `GITHUB_TOKEN` / `GH_TOKEN` and **git**). |
+| `--github-public` | Make the new GitHub repository public (default: private). |
 | `--no-interactive` | Non-CI: skip prompts; use defaults for any option not set on the CLI. |
 
 Example:
@@ -173,7 +189,7 @@ So you can work inside the repo directory without registering, or rely on the re
 - **`docker-compose.yml`** — app service (`env_file: .env`) plus optional Postgres, MongoDB, Kafka/Zookeeper, RabbitMQ.
 - **`README.md`** — short run instructions and endpoint list for the template.
 - **`Dockerfile`** — language-specific image build.
-- **CI** — `.github/workflows/ci.yml` or `.gitlab-ci.yml` when not disabled.
+- **CI** — `.github/workflows/ci.yml` (test + Docker build; **push to GHCR** `ghcr.io/<owner>/<repo>:latest` on pushes to `main`) or `.gitlab-ci.yml` when GitLab is selected.
 - **`infra/`** — minimal Pulumi TypeScript placeholder when `--infra pulumi` was used.
 
 ## Using Forgeops from Node.js (advanced)

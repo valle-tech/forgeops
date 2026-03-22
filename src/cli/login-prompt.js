@@ -1,4 +1,3 @@
-/** Minimal readline for login (hidden token). */
 export function promptLine(q, hidden = false) {
   return new Promise((resolve) => {
     const { stdin, stdout } = process;

@@ -2,8 +2,12 @@ import path from 'node:path';
 import { cwd } from 'node:process';
 
 import { upsertService } from '../lib/registry.js';
-import { scaffoldService, normalizeName } from '../lib/scaffold.js';
+import { scaffoldService, normalizeName, writeGitHubCI } from '../lib/scaffold.js';
 import { resolveCreateOptions } from '../lib/create-options.js';
+import { getGithubToken, getViewerLogin, createUserRepository } from '../lib/github.js';
+import { initCommitAndPush } from '../lib/git-push.js';
+import { patchForgeopsJson } from '../lib/manifest.js';
+import { whichAvailable } from '../lib/exec.js';
 
 export function registerCreateCommands(program) {
   const create = program.command('create').description('Scaffold new resources');
@@ -18,8 +22,10 @@ export function registerCreateCommands(program) {
     .option('--template <id>', 'Template id (e.g. nestjs-clean, go-clean, python-clean)')
     .option('--port <n>', 'HTTP port (host and container)')
     .option('--auth', 'Enable JWT auth scaffolding')
+    .option('--github', 'Create GitHub repository and push initial commit (needs GITHUB_TOKEN or GH_TOKEN)')
+    .option('--github-public', 'With --github, create a public repository (default: private)')
     .option('--output <dir>', 'Parent directory', cwd())
-    .option('--repo <url>', 'Optional repository URL to record')
+    .option('--repo <url>', 'Optional repository URL to record (ignored when --github succeeds)')
     .option('--no-interactive', 'Skip prompts; use defaults for any option not passed on the CLI')
     .action(async function createServiceAction(name, opts) {
       const o = await resolveCreateOptions(opts, this);
@@ -41,6 +47,43 @@ export function registerCreateCommands(program) {
         templateId: o.template,
         port: o.port,
       });
+
+      if (o.github && vars.ci !== 'github') {
+        await writeGitHubCI(dest, vars);
+      }
+
+      let repoUrl = opts.repo || '';
+      let githubHtmlUrl = '';
+
+      if (o.github) {
+        const token = getGithubToken();
+        if (!token) {
+          console.error('GITHUB_TOKEN or GH_TOKEN is required for --github (create a PAT with repo scope).');
+          process.exitCode = 1;
+        } else if (!(await whichAvailable('git'))) {
+          console.error('git must be installed to create and push a GitHub repository.');
+          process.exitCode = 1;
+        } else {
+          console.log('✔ Creating GitHub repository...');
+          try {
+            const login = await getViewerLogin(token);
+            const repo = await createUserRepository(token, {
+              name: slug,
+              description: `${displayName} service (forgeops)`,
+              private: !o.githubPublic,
+            });
+            githubHtmlUrl = repo.html_url;
+            console.log('✔ Pushing initial commit to main...');
+            await initCommitAndPush({ dir: dest, owner: login, repo: slug, token });
+            repoUrl = repo.html_url;
+            await patchForgeopsJson(dest, { repoUrl });
+          } catch (e) {
+            console.error(e.message || String(e));
+            process.exitCode = 1;
+          }
+        }
+      }
+
       await upsertService({
         name: svcName,
         slug,
@@ -52,13 +95,23 @@ export function registerCreateCommands(program) {
         ci: vars.ci,
         infra: vars.infra,
         httpPort: vars.port,
-        repoUrl: opts.repo || '',
+        repoUrl,
         template: templateId,
       });
-      console.log('✔ Done');
+
+      console.log('✔ Service created');
+      if (githubHtmlUrl) {
+        console.log(`✔ Repo: ${githubHtmlUrl}`);
+        console.log('✔ CI/CD: .github/workflows/ci.yml (test + Docker; push image to GHCR on main)');
+      }
       console.log('');
       console.log('→ Next steps:');
       console.log(`   cd ${slug}`);
-      console.log('   docker compose up');
+      if (githubHtmlUrl) {
+        console.log('   docker compose up');
+        console.log('   # Workflow runs on GitHub; after merge to main: ghcr.io/<owner>/<repo>:latest');
+      } else {
+        console.log('   docker compose up');
+      }
     });
 }

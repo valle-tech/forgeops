@@ -2,15 +2,11 @@ import { readFile, writeFile, access } from 'node:fs/promises';
 import path from 'node:path';
 import { constants } from 'node:fs';
 
-/** Primary project marker (Step 4). */
 export const FORGEOPS_JSON = '.forgeops.json';
 
-/** @deprecated use FORGEOPS_JSON — still read for older scaffolds */
 export const LEGACY_MANIFEST_FILE = '.forgeops-manifest.json';
 
 export const MANIFEST_FILE = FORGEOPS_JSON;
-
-/** Normalize config so older fields and new `.forgeops.json` shape both work. */
 export function normalizeProjectConfig(j) {
   if (!j || typeof j !== 'object') return j;
   const name = j.name ?? j.serviceName ?? '';
@@ -56,7 +52,6 @@ export async function readProjectConfig(dir) {
   }
 }
 
-/** @deprecated alias */
 export async function readManifest(dir) {
   return readProjectConfig(dir);
 }
@@ -79,7 +74,6 @@ export async function writeProjectConfig(dir, data) {
   await writeFile(path.join(dir, FORGEOPS_JSON), JSON.stringify(base, null, 2), 'utf8');
 }
 
-/** @deprecated writes only .forgeops.json now */
 export async function writeManifest(dir, data) {
   await writeProjectConfig(dir, {
     ...data,
@@ -90,13 +84,20 @@ export async function writeManifest(dir, data) {
   });
 }
 
+export async function patchForgeopsJson(dir, patch) {
+  const p = path.join(dir, FORGEOPS_JSON);
+  const raw = await readFile(p, 'utf8');
+  const j = JSON.parse(raw);
+  Object.assign(j, patch);
+  await writeFile(p, JSON.stringify(j, null, 2), 'utf8');
+}
+
 export async function projectMarkerExists(dir) {
   for (const f of [FORGEOPS_JSON, LEGACY_MANIFEST_FILE]) {
     try {
       await access(path.join(dir, f), constants.F_OK);
       return true;
     } catch {
-      /* continue */
     }
   }
   return false;

@@ -2,10 +2,6 @@ import { readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { readProjectConfig, projectMarkerExists } from './manifest.js';
 
-/**
- * Find directories under rootDir that contain .forgeops.json (or legacy manifest).
- * Checks rootDir itself and immediate children (monorepo-style).
- */
 export async function scanForgeopsProjects(rootDir, { shallow = true } = {}) {
   const found = [];
   const tryAdd = async (dir) => {
@@ -41,7 +37,6 @@ export async function scanForgeopsProjects(rootDir, { shallow = true } = {}) {
         await tryAdd(sub);
       }
     } catch {
-      /* skip */
     }
   }
 
