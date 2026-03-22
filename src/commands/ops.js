@@ -2,7 +2,7 @@ import path from 'node:path';
 import { readFile } from 'node:fs/promises';
 
 import { readProjectConfig } from '../lib/manifest.js';
-import { run as runCmd, whichAvailable } from '../lib/exec.js';
+import { run as runCmd, whichAvailable, runDockerComposeUp } from '../lib/exec.js';
 import { resolveServiceOrExit } from '../cli/service-root.js';
 
 export function registerOpsCommands(program) {
@@ -50,14 +50,13 @@ export function registerOpsCommands(program) {
 
   program
     .command('run <name>')
-    .description('Run service with docker compose')
-    .option('-d, --detach', 'Run in background', false)
+    .description('Start the service from its directory using docker compose (reads .forgeops.json path)')
+    .option('-d, --detach', 'Run in background')
     .action(async (name, opts) => {
       const ctx = await resolveServiceOrExit(name);
       if (!ctx) return;
       const { root } = ctx;
-      const args = ['compose', 'up'];
-      if (opts.detach) args.push('-d');
-      await runCmd('docker', args, { cwd: root });
+      console.log(`→ Compose in ${root}`);
+      await runDockerComposeUp(root, { detach: Boolean(opts.detach) });
     });
 }

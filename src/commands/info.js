@@ -1,11 +1,13 @@
+import { access, constants } from 'node:fs/promises';
+import path from 'node:path';
+
 import { resolveServiceRoot } from '../lib/registry.js';
 import { readProjectConfig } from '../lib/manifest.js';
 
 export function registerInfoCommands(program) {
-  const infoCmd = program.command('info').description('Show details for a resource');
-  infoCmd
-    .command('service <name>')
-    .description('Show language, DB, ports, repo')
+  program
+    .command('info <name>')
+    .description('Show template, repo URL, port, and DB for a service')
     .action(async (name) => {
       const { root, entry } = await resolveServiceRoot(name);
       if (!root) {
@@ -19,17 +21,33 @@ export function registerInfoCommands(program) {
       } catch {
         m = entry;
       }
-      console.log(`Name:     ${m.serviceName || entry?.name || name}`);
-      console.log(`Slug:     ${m.serviceSlug || entry?.slug || ''}`);
-      console.log(`Path:     ${root}`);
-      console.log(`Language: ${m.language || entry?.language || ''}`);
-      console.log(`DB:       ${m.database || entry?.database || 'none'}`);
-      console.log(`Messaging:${m.messaging || entry?.messaging || 'none'}`);
-      console.log(`Port:     ${m.httpPort ?? entry?.httpPort ?? ''}`);
-      console.log(`Auth:     ${m.auth ?? entry?.auth ?? false}`);
-      console.log(`CI:       ${m.ci || entry?.ci || ''}`);
-      console.log(`Infra:    ${m.infra || entry?.infra || ''}`);
-      if (m.template || entry?.template) console.log(`Template: ${m.template || entry?.template}`);
-      if (m.repoUrl || entry?.repoUrl) console.log(`Repo:     ${m.repoUrl || entry?.repoUrl}`);
+      const template = m.template ?? entry?.template ?? '—';
+      const repo = m.repoUrl ?? entry?.repoUrl ?? '—';
+      const port = m.httpPort ?? m.port ?? entry?.httpPort ?? '—';
+      const db = m.database ?? entry?.database ?? 'none';
+      const messaging = m.messaging ?? entry?.messaging ?? 'none';
+      const features = Array.isArray(m.features) ? m.features.join(', ') : '—';
+
+      console.log(`template   ${template}`);
+      console.log(`repo       ${repo}`);
+      console.log(`port       ${port}`);
+      console.log(`db         ${db}`);
+      if (messaging && messaging !== 'none') console.log(`messaging  ${messaging}`);
+      console.log(`path       ${root}`);
+      if (features !== '—') console.log(`features   ${features}`);
+
+      let composeLine = 'compose    (none)';
+      try {
+        await access(path.join(root, 'docker-compose.yml'), constants.F_OK);
+        composeLine = 'compose    docker-compose.yml';
+      } catch {
+        try {
+          await access(path.join(root, 'docker-compose.yaml'), constants.F_OK);
+          composeLine = 'compose    docker-compose.yaml';
+        } catch {
+          /* keep (none) */
+        }
+      }
+      console.log(composeLine);
     });
 }

@@ -1,3 +1,5 @@
+import { access, constants } from 'node:fs/promises';
+import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 export function run(cmd, args, opts = {}) {
@@ -25,4 +27,39 @@ export async function whichAvailable(cmd) {
     child.on('close', (code) => resolve(code === 0));
     child.on('error', () => resolve(false));
   });
+}
+
+export async function composeFileInDir(cwd) {
+  for (const f of ['docker-compose.yml', 'docker-compose.yaml']) {
+    try {
+      await access(path.join(cwd, f), constants.F_OK);
+      return f;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
+}
+
+/**
+ * Run `docker compose up` (v2) or fall back to `docker-compose` (v1).
+ * Requires docker-compose.yml or docker-compose.yaml in cwd.
+ */
+export async function runDockerComposeUp(cwd, { detach = false } = {}) {
+  const file = await composeFileInDir(cwd);
+  if (!file) {
+    throw new Error(`No docker-compose.yml (or .yaml) in ${cwd}`);
+  }
+  const upArgs = ['up', ...(detach ? ['-d'] : [])];
+  try {
+    await run('docker', ['compose', ...upArgs], { cwd });
+  } catch (e1) {
+    try {
+      await run('docker-compose', upArgs, { cwd });
+    } catch (e2) {
+      throw new Error(
+        `Could not start Compose in ${cwd}.\n  docker compose: ${e1.message || e1}\n  docker-compose: ${e2.message || e2}`,
+      );
+    }
+  }
 }

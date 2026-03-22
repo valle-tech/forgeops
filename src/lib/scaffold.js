@@ -1,7 +1,7 @@
 import { mkdir, readdir, readFile, writeFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { writeProjectConfig } from './manifest.js';
+import { readProjectConfig, writeProjectConfig } from './manifest.js';
 import { customTemplatesDir } from './paths.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -335,6 +335,23 @@ async function writeGeneratedReadme(dest, v, templateId) {
   await writeFile(path.join(dest, 'README.md'), lines.join('\n'), 'utf8');
 }
 
+/** Build compose vars from `.forgeops.json` (regenerate docker-compose.yml). */
+export function manifestToComposeVars(m) {
+  const slug = (m.serviceSlug || m.slug || 'app').replace(/_/g, '-');
+  return {
+    serviceName: m.serviceName || m.name || 'service',
+    serviceSlug: slug,
+    port: Number(m.httpPort ?? m.port ?? 3000),
+    database: String(m.database || 'none').toLowerCase(),
+    messaging: String(m.messaging || 'none').toLowerCase(),
+  };
+}
+
+export async function regenerateDockerCompose(dir) {
+  const cfg = await readProjectConfig(dir);
+  await writeDockerCompose(dir, manifestToComposeVars(cfg));
+}
+
 async function writeDockerCompose(dest, v) {
   const services = {
     [v.serviceSlug]: {
@@ -583,7 +600,7 @@ Add route guards / middleware in your stack for protected routes.
   );
 }
 
-async function writeMessagingExtras(dest, v) {
+export async function writeMessagingExtras(dest, v) {
   const p = path.join(dest, 'FORGEOPS_MESSAGING.md');
   await writeFile(
     p,

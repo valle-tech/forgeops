@@ -92,6 +92,44 @@ export async function patchForgeopsJson(dir, patch) {
   await writeFile(p, JSON.stringify(j, null, 2), 'utf8');
 }
 
+/** Append unique feature id for `forgeops add feature`. */
+export async function appendForgeopsFeature(dir, featureId) {
+  const p = path.join(dir, FORGEOPS_JSON);
+  const raw = await readFile(p, 'utf8');
+  const j = JSON.parse(raw);
+  const list = Array.isArray(j.features) ? j.features : [];
+  if (!list.includes(featureId)) list.push(featureId);
+  j.features = list;
+  await writeFile(p, JSON.stringify(j, null, 2), 'utf8');
+}
+
+/** Add or replace env keys (does not remove lines; skips keys already set). */
+export async function mergeEnvFile(dir, entries) {
+  const p = path.join(dir, '.env');
+  let content = '';
+  try {
+    content = await readFile(p, 'utf8');
+  } catch {
+    /* new file */
+  }
+  const lines = content.split(/\n/);
+  const keys = new Set(
+    lines
+      .filter((l) => l.trim() && !l.trim().startsWith('#'))
+      .map((l) => l.split('=')[0]?.trim())
+      .filter(Boolean),
+  );
+  let changed = false;
+  for (const [k, v] of Object.entries(entries)) {
+    if (keys.has(k)) continue;
+    lines.push(`${k}=${v}`);
+    keys.add(k);
+    changed = true;
+  }
+  const out = lines.join('\n').replace(/\n+$/, '') + '\n';
+  if (changed || !content) await writeFile(p, out, 'utf8');
+}
+
 export async function projectMarkerExists(dir) {
   for (const f of [FORGEOPS_JSON, LEGACY_MANIFEST_FILE]) {
     try {

@@ -8,11 +8,13 @@ import { registerObserveCommands } from '../commands/observe.js';
 import { registerQualityCommands } from '../commands/quality.js';
 import { registerTemplatesCommands } from '../commands/templates.js';
 import { registerAuthCommands } from '../commands/auth.js';
+import { registerAddCommands } from '../commands/add.js';
 
 export function registerCommands(program) {
   registerCreateCommands(program);
   registerListCommands(program);
   registerInfoCommands(program);
+  registerAddCommands(program);
   registerDeleteCommands(program);
   registerOpsCommands(program);
   registerInfraCommands(program);
