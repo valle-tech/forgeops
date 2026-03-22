@@ -8,6 +8,7 @@ import (
 	"time"
 
 	_ "github.com/lib/pq"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"{{MODULE_PATH}}/internal/config"
 	"{{MODULE_PATH}}/internal/httpx"
 )
@@ -15,7 +16,7 @@ import (
 func Register(mux *http.ServeMux, cfg *config.Config) {
 	mux.HandleFunc("GET /health", liveness(cfg))
 	mux.HandleFunc("GET /ready", readiness(cfg))
-	mux.HandleFunc("GET /metrics", metrics())
+	mux.Handle("GET /metrics", promhttp.Handler())
 }
 
 func liveness(cfg *config.Config) http.HandlerFunc {
@@ -67,13 +68,5 @@ func readiness(cfg *config.Config) http.HandlerFunc {
 			"status": "ready",
 			"checks": map[string]string{"database": "ok"},
 		})
-	}
-}
-
-func metrics() http.HandlerFunc {
-	slug := "{{SERVICE_SLUG}}"
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/plain; version=0.0.4")
-		_, _ = w.Write([]byte("# HELP http_requests_total Total HTTP requests\n# TYPE http_requests_total counter\nhttp_requests_total{service=\"" + slug + "\"} 0\n"))
 	}
 }

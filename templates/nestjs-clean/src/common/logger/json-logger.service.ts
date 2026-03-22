@@ -1,48 +1,43 @@
-import { Injectable, LoggerService, LogLevel } from '@nestjs/common';
+import { Injectable, LoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { configureLogger, logger } from '../../lib/logger';
 
 @Injectable()
 export class JsonLoggerService implements LoggerService {
-  private readonly service: string;
-
   constructor(private readonly config: ConfigService) {
-    this.service = this.config.get<string>('serviceName', '{{SERVICE_NAME}}');
-  }
-
-  private line(level: LogLevel, message: unknown, context?: string, extra?: Record<string, unknown>) {
-    const base: Record<string, unknown> = {
-      level,
-      service: this.service,
-      message: typeof message === 'string' ? message : JSON.stringify(message),
-      timestamp: new Date().toISOString(),
-    };
-    if (context) base.context = context;
-    if (extra && Object.keys(extra).length) Object.assign(base, extra);
-    process.stdout.write(JSON.stringify(base) + '\n');
+    configureLogger({ serviceName: this.config.get<string>('serviceName', '{{SERVICE_NAME}}') });
   }
 
   log(message: unknown, context?: string) {
-    this.line('info', message, context);
+    const msg = typeof message === 'string' ? message : JSON.stringify(message);
+    logger.info(msg, context ? { context } : undefined);
   }
 
   error(message: unknown, trace?: string, context?: string) {
-    this.line('error', message, context, trace ? { trace } : undefined);
+    const msg = typeof message === 'string' ? message : JSON.stringify(message);
+    const extra: Record<string, unknown> = {};
+    if (trace) extra.trace = trace;
+    if (context) extra.context = context;
+    logger.error(msg, Object.keys(extra).length ? extra : undefined);
   }
 
   warn(message: unknown, context?: string) {
-    this.line('warn', message, context);
+    const msg = typeof message === 'string' ? message : JSON.stringify(message);
+    logger.warn(msg, context ? { context } : undefined);
   }
 
   debug(message: unknown, context?: string) {
-    this.line('debug', message, context);
+    const msg = typeof message === 'string' ? message : JSON.stringify(message);
+    logger.info(msg, context ? { context, nestLevel: 'debug' } : { nestLevel: 'debug' });
   }
 
   verbose(message: unknown, context?: string) {
-    this.line('verbose', message, context);
+    const msg = typeof message === 'string' ? message : JSON.stringify(message);
+    logger.info(msg, context ? { context, nestLevel: 'verbose' } : { nestLevel: 'verbose' });
   }
 
-  /** Structured log with arbitrary fields (e.g. requestId). */
+  /** Structured log with arbitrary fields (e.g. action). */
   infoStructured(message: string, fields: Record<string, unknown>) {
-    this.line('info', message, undefined, fields);
+    logger.info(message, fields);
   }
 }

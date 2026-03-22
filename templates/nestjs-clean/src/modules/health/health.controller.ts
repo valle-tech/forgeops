@@ -1,7 +1,8 @@
-import { Controller, Get, Header, Res } from '@nestjs/common';
+import { Controller, Get, Res } from '@nestjs/common';
 import { Response } from 'express';
 import { HealthService } from './health.service';
 import { ConfigService } from '@nestjs/config';
+import { metricsRegister } from '../../lib/metrics';
 
 @Controller()
 export class HealthController {
@@ -24,18 +25,8 @@ export class HealthController {
   }
 
   @Get('metrics')
-  @Header('Content-Type', 'text/plain; version=0.0.4')
-  metrics(@Res() res: Response) {
-    const slug = '{{SERVICE_SLUG}}';
-    const body = [
-      '# HELP http_requests_total Total HTTP requests',
-      '# TYPE http_requests_total counter',
-      `http_requests_total{service="${slug}"} 0`,
-      '# HELP http_errors_total Total HTTP errors',
-      '# TYPE http_errors_total counter',
-      `http_errors_total{service="${slug}"} 0`,
-      '',
-    ].join('\n');
-    res.send(body);
+  async metrics(@Res() res: Response) {
+    res.setHeader('Content-Type', metricsRegister.contentType);
+    res.send(await metricsRegister.metrics());
   }
 }

@@ -4,16 +4,11 @@ import request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { JsonLoggerService } from '../src/common/logger/json-logger.service';
 import { AllExceptionsFilter } from '../src/common/filters/all-exceptions.filter';
-import { RequestLoggingInterceptor } from '../src/common/interceptors/request-logging.interceptor';
 
 describe('App (e2e)', () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'e2e-test';
-    process.env.PORT = process.env.PORT || '3999';
-    process.env.DATABASE_URL = process.env.DATABASE_URL || '';
-
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -22,7 +17,6 @@ describe('App (e2e)', () => {
     const logger = app.get(JsonLoggerService);
     app.useLogger(logger);
     app.useGlobalFilters(new AllExceptionsFilter());
-    app.useGlobalInterceptors(new RequestLoggingInterceptor(logger));
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
     await app.init();
   });
@@ -41,6 +35,13 @@ describe('App (e2e)', () => {
     return request(app.getHttpServer()).get('/ready').expect(200).expect((res) => {
       expect(res.body.status).toBe('ready');
     });
+  });
+
+  it('GET /metrics — prometheus text', async () => {
+    const res = await request(app.getHttpServer()).get('/metrics').expect(200);
+    expect(res.text).toContain('http_requests_total');
+    expect(res.text).toContain('http_errors_total');
+    expect(res.text).toContain('http_request_duration_ms');
   });
 
   it('GET /payments/demo-error — standard error JSON', async () => {

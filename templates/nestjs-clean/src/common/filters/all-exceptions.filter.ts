@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { logger } from '../../lib/logger';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -42,6 +43,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
     } else if (exception instanceof Error) {
       message = exception.message;
     }
+
+    logger.error('request failed', {
+      statusCode: status,
+      error: code,
+      message,
+      ...(exception instanceof Error && exception.stack ? { trace: exception.stack } : {}),
+    });
 
     res.status(status).json({
       error: code,

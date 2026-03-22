@@ -4,7 +4,6 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { JsonLoggerService } from './common/logger/json-logger.service';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
-import { RequestLoggingInterceptor } from './common/interceptors/request-logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -12,7 +11,6 @@ async function bootstrap() {
   app.useLogger(logger);
   const config = app.get(ConfigService);
   app.useGlobalFilters(new AllExceptionsFilter());
-  app.useGlobalInterceptors(new RequestLoggingInterceptor(logger));
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
