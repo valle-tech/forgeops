@@ -3,6 +3,7 @@
   "version": "0.0.5",
   "description": "CLI for scaffolding and operating IDP-style microservices",
   "type": "module",
+  "license": "MIT",
   "files": [
     "bin",
     "src",
