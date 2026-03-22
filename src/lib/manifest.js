@@ -130,6 +130,36 @@ export async function mergeEnvFile(dir, entries) {
   if (changed || !content) await writeFile(p, out, 'utf8');
 }
 
+/** Remove feature id from `.forgeops.json` features array. */
+export async function removeForgeopsFeature(dir, featureId) {
+  const p = path.join(dir, FORGEOPS_JSON);
+  const raw = await readFile(p, 'utf8');
+  const j = JSON.parse(raw);
+  if (!Array.isArray(j.features)) return;
+  j.features = j.features.filter((x) => x !== featureId);
+  await writeFile(p, JSON.stringify(j, null, 2), 'utf8');
+}
+
+/** Drop env lines whose key is in `keys`. */
+export async function removeEnvKeys(dir, keys) {
+  const set = new Set(keys);
+  const p = path.join(dir, '.env');
+  let content;
+  try {
+    content = await readFile(p, 'utf8');
+  } catch {
+    return;
+  }
+  const lines = content.split(/\n/);
+  const next = lines.filter((l) => {
+    const trimmed = l.trim();
+    if (!trimmed || trimmed.startsWith('#')) return true;
+    const k = l.split('=')[0]?.trim();
+    return !set.has(k);
+  });
+  await writeFile(p, next.join('\n').replace(/\n+$/, '') + '\n', 'utf8');
+}
+
 export async function projectMarkerExists(dir) {
   for (const f of [FORGEOPS_JSON, LEGACY_MANIFEST_FILE]) {
     try {

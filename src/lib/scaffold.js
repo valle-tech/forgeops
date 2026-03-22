@@ -1,4 +1,5 @@
-import { mkdir, readdir, readFile, writeFile, stat } from 'node:fs/promises';
+import { mkdir, readdir, readFile, writeFile, stat, access } from 'node:fs/promises';
+import { constants } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readProjectConfig, writeProjectConfig } from './manifest.js';
@@ -81,7 +82,7 @@ export function exampleDbUrl(db, slug) {
   return '';
 }
 
-function replacements(vars) {
+export function replacements(vars) {
   const {
     serviceName,
     serviceSlug,
@@ -129,6 +130,75 @@ async function copyTree(srcDir, destDir, rep) {
       await writeFile(to, applyReplacements(buf, rep), 'utf8');
     }
   }
+}
+
+/** Vars for template placeholders from an existing `.forgeops.json`. */
+export function projectVarsFromManifest(cfg) {
+  const rawName = cfg.serviceName || cfg.name || 'service';
+  const name = normalizeName(rawName) || rawName;
+  const slug = cfg.serviceSlug || cfg.slug || serviceSlug(name);
+  let lang = String(cfg.language || 'node').toLowerCase();
+  if (lang === 'nodejs') lang = 'node';
+  const port = Number(cfg.httpPort ?? cfg.port ?? defaultPort(lang));
+  const database = String(cfg.database || 'none').toLowerCase();
+  const messaging = String(cfg.messaging || 'none').toLowerCase();
+  const modulePath = lang === 'go' ? `github.com/local/${slug}` : '';
+  const dbConn = database !== 'none' ? exampleDbUrl(database, slug) : '';
+  return {
+    serviceName: name,
+    serviceSlug: slug,
+    port,
+    language: lang,
+    database,
+    messaging,
+    auth: Boolean(cfg.auth),
+    ci: String(cfg.ci || 'github').toLowerCase(),
+    infra: String(cfg.infra || 'none').toLowerCase(),
+    modulePath,
+    dbConnUrl: dbConn,
+  };
+}
+
+/** Copy template files only when the destination path does not exist. */
+export async function mergeTemplateMissingFiles(srcDir, destDir, rep) {
+  await mkdir(destDir, { recursive: true });
+  const entries = await readdir(srcDir, { withFileTypes: true });
+  for (const e of entries) {
+    const from = path.join(srcDir, e.name);
+    const to = path.join(destDir, e.name);
+    if (e.isDirectory()) {
+      await mergeTemplateMissingFiles(from, to, rep);
+    } else {
+      try {
+        await access(to, constants.F_OK);
+      } catch {
+        const buf = await readFile(from, 'utf8');
+        await writeFile(to, applyReplacements(buf, rep), 'utf8');
+      }
+    }
+  }
+}
+
+/** Relative paths under template that are missing in dest (for --dry-run). */
+export async function collectMissingTemplatePaths(srcDir, destDir, rel = '') {
+  const missing = [];
+  const absSrc = rel ? path.join(srcDir, rel) : srcDir;
+  const entries = await readdir(absSrc, { withFileTypes: true });
+  for (const e of entries) {
+    const piece = rel ? path.join(rel, e.name) : e.name;
+    const from = path.join(srcDir, piece);
+    const to = path.join(destDir, piece);
+    if (e.isDirectory()) {
+      missing.push(...(await collectMissingTemplatePaths(srcDir, destDir, piece)));
+    } else {
+      try {
+        await access(to, constants.F_OK);
+      } catch {
+        missing.push(piece.split(path.sep).join('/'));
+      }
+    }
+  }
+  return missing;
 }
 
 async function dirExists(p) {

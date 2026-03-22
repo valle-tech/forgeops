@@ -18,9 +18,14 @@ export function registerOpsCommands(program) {
       try {
         await readFile(wf, 'utf8');
         if (gh) {
-          console.log('To trigger CI on GitHub: push this repo, then run: gh workflow run ci.yml');
+          try {
+            await runCmd('gh', ['workflow', 'run', 'ci.yml'], { cwd: root, stdio: 'inherit' });
+            console.log('Triggered GitHub Actions workflow ci.yml');
+          } catch {
+            console.log('Could not trigger via gh; push to GitHub to run CI, or run: gh workflow run ci.yml');
+          }
         } else {
-          console.log('GitHub CLI not installed. Push the repo and workflows will run on GitHub.');
+          console.log('GitHub CLI not installed. Push the repo to run workflows on GitHub.');
         }
       } catch {
         console.log('No GitHub workflow found; building Docker image locally instead.');

@@ -8,9 +8,8 @@ import {
   patchForgeopsJson,
   readProjectConfig,
 } from '../lib/manifest.js';
+import { FEATURE_IDS } from '../lib/features.js';
 import { regenerateDockerCompose, writeMessagingExtras } from '../lib/scaffold.js';
-
-const FEATURE_IDS = ['logging', 'kafka', 'rabbitmq'];
 
 async function writeLoggingDoc(root) {
   const doc = path.join(root, 'FORGEOPS_LOGGING.md');
@@ -18,7 +17,6 @@ async function writeLoggingDoc(root) {
     await access(doc, constants.F_OK);
     return;
   } catch {
-    /* create */
   }
   const body = `# Structured logging
 

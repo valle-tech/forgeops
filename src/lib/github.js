@@ -4,6 +4,15 @@ export function getGithubToken() {
   return (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '').trim();
 }
 
+/** Env first, then ~/.forgeops/config.json `github.token`. */
+export async function resolveGithubToken() {
+  const env = getGithubToken();
+  if (env) return env;
+  const { getConfigValue } = await import('./config-store.js');
+  const v = await getConfigValue('github.token');
+  return String(v || '').trim();
+}
+
 export async function githubFetch(path, token, opts = {}) {
   const res = await fetch(`${GITHUB_API}${path}`, {
     ...opts,

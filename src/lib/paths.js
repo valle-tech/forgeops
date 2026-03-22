@@ -14,6 +14,10 @@ export function registryPath() {
   return path.join(forgeOpsDir(), 'registry.json');
 }
 
+export function userConfigPath() {
+  return path.join(forgeOpsDir(), 'config.json');
+}
+
 export function credentialsPath() {
   return path.join(forgeOpsDir(), 'credentials.json');
 }

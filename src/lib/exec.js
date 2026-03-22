@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 export function run(cmd, args, opts = {}) {
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, {
-      stdio: 'inherit',
+      stdio: opts.stdio ?? 'inherit',
       shell: false,
       cwd: opts.cwd,
       env: { ...process.env, ...opts.env },
@@ -59,6 +59,28 @@ export async function runDockerComposeUp(cwd, { detach = false } = {}) {
     } catch (e2) {
       throw new Error(
         `Could not start Compose in ${cwd}.\n  docker compose: ${e1.message || e1}\n  docker-compose: ${e2.message || e2}`,
+      );
+    }
+  }
+}
+
+/**
+ * Stream `docker compose logs` for a service (Compose service name = slug).
+ */
+export async function runDockerComposeLogs(cwd, serviceName, { follow = true } = {}) {
+  const file = await composeFileInDir(cwd);
+  if (!file) {
+    throw new Error(`No docker-compose.yml (or .yaml) in ${cwd}`);
+  }
+  const logArgs = ['logs', ...(follow ? ['-f'] : []), serviceName];
+  try {
+    await run('docker', ['compose', ...logArgs], { cwd });
+  } catch (e1) {
+    try {
+      await run('docker-compose', logArgs, { cwd });
+    } catch (e2) {
+      throw new Error(
+        `Could not stream logs in ${cwd}.\n  docker compose: ${e1.message || e1}\n  docker-compose: ${e2.message || e2}`,
       );
     }
   }

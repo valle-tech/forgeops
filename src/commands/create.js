@@ -4,7 +4,7 @@ import { cwd } from 'node:process';
 import { upsertService } from '../lib/registry.js';
 import { scaffoldService, normalizeName, writeGitHubCI } from '../lib/scaffold.js';
 import { resolveCreateOptions } from '../lib/create-options.js';
-import { getGithubToken, getViewerLogin, createUserRepository } from '../lib/github.js';
+import { resolveGithubToken, getViewerLogin, createUserRepository } from '../lib/github.js';
 import { initCommitAndPush } from '../lib/git-push.js';
 import { patchForgeopsJson } from '../lib/manifest.js';
 import { whichAvailable } from '../lib/exec.js';
@@ -56,9 +56,11 @@ export function registerCreateCommands(program) {
       let githubHtmlUrl = '';
 
       if (o.github) {
-        const token = getGithubToken();
+        const token = await resolveGithubToken();
         if (!token) {
-          console.error('GITHUB_TOKEN or GH_TOKEN is required for --github (create a PAT with repo scope).');
+          console.error(
+            'GitHub token required for --github: set GITHUB_TOKEN or GH_TOKEN, or run: forgeops config set github.token <pat>',
+          );
           process.exitCode = 1;
         } else if (!(await whichAvailable('git'))) {
           console.error('git must be installed to create and push a GitHub repository.');

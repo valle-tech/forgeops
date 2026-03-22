@@ -1,14 +1,14 @@
 import { spawn } from 'node:child_process';
 
 import { readProjectConfig } from '../lib/manifest.js';
-import { run as runCmd, whichAvailable } from '../lib/exec.js';
+import { run as runCmd, whichAvailable, runDockerComposeLogs } from '../lib/exec.js';
 import { resolveServiceOrExit } from '../cli/service-root.js';
 
 export function registerObserveCommands(program) {
   program
     .command('logs <name>')
-    .description('Tail docker compose logs')
-    .option('-f, --follow', 'Follow', true)
+    .description('Stream service logs (docker compose logs for the Compose service name)')
+    .option('-n, --no-follow', 'Print existing logs once and exit (no stream)')
     .action(async (name, opts) => {
       const ctx = await resolveServiceOrExit(name);
       if (!ctx) return;
@@ -20,10 +20,7 @@ export function registerObserveCommands(program) {
       } catch {
         slug = entry?.slug || entry?.serviceSlug || slug;
       }
-      const args = ['compose', 'logs'];
-      if (opts.follow) args.push('-f');
-      args.push(slug);
-      await runCmd('docker', args, { cwd: root });
+      await runDockerComposeLogs(root, slug, { follow: !opts.noFollow });
     });
 
   program
