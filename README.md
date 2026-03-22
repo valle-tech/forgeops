@@ -2,6 +2,8 @@
 
 CLI for scaffolding and day-to-day operations on small backend services (NestJS, Go, or FastAPI), in the spirit of an internal developer platform: templates, Docker Compose, optional CI and Pulumi stubs, and commands that wrap common workflows.
 
+**Package on npm:** [forgeops](https://www.npmjs.com/package/forgeops)
+
 ## Requirements
 
 - **Node.js 18+**
@@ -10,26 +12,41 @@ CLI for scaffolding and day-to-day operations on small backend services (NestJS,
 
 ## Install
 
-From a clone of this repository:
+Install the `forgeops` command globally from npm:
 
 ```bash
-cd forgeops
-npm install
+npm install -g forgeops
+forgeops --help
 ```
 
-Run the CLI without installing globally:
+Upgrade an existing global install (bumps within the semver range npm recorded when you first installed):
 
 ```bash
+npm update -g forgeops
+```
+
+To always pull the newest release from the registry regardless of that range:
+
+```bash
+npm install -g forgeops@latest
+```
+
+Run once without installing globally:
+
+```bash
+npx forgeops --help
+```
+
+### Development (this repository)
+
+If you are working from a clone instead of the published package:
+
+```bash
+npm install
+npm link              # optional: point global `forgeops` at this checkout
 npm run forgeops -- --help
 # or
 node bin/forgeops.js --help
-```
-
-Install the `forgeops` command on your PATH (typical for local development):
-
-```bash
-npm link
-forgeops --help
 ```
 
 ## Quick start
@@ -85,7 +102,7 @@ forgeops create service orders \
   --output ~/src
 ```
 
-Templates live under `templates/` in this repo (`nestjs-clean`, `go-clean`, `python-clean`). Files may contain placeholders such as `{{SERVICE_NAME}}`, `{{SERVICE_SLUG}}`, and `{{PORT}}`, which Forgeops replaces when copying.
+Built-in templates ship inside the npm package (`nestjs-clean`, `go-clean`, `python-clean`). Files may contain placeholders such as `{{SERVICE_NAME}}`, `{{SERVICE_SLUG}}`, and `{{PORT}}`, which Forgeops replaces when copying.
 
 ## How Forgeops finds a service
 
@@ -153,7 +170,7 @@ So you can work inside the repo directory without registering, or rely on the re
 
 ## Using Forgeops from Node.js (advanced)
 
-This package is primarily a CLI. The entry point used by `bin/forgeops.js` is `runCli` in `src/index.js`. If you are developing inside this repo, you can drive the same parser programmatically:
+The supported interface for users is the **`forgeops` CLI** installed from npm. If you contribute to this repo, you can invoke the same command loop programmatically:
 
 ```js
 import { runCli } from './src/index.js';
@@ -161,7 +178,7 @@ import { runCli } from './src/index.js';
 await runCli(process.argv);
 ```
 
-Scaffolding logic is in `src/lib/scaffold.js` (for example `scaffoldService`, `listBuiltinTemplateIds`). The service registry is in `src/lib/registry.js`. There is no stable semver “library” surface published on npm yet; treat these modules as internal unless you pin a git SHA or fork.
+Scaffolding helpers live under `src/lib/` (`scaffold.js`, `registry.js`, etc.). They are not documented as a stable public API for dependents; for automation, prefer shelling out to `forgeops` or open an issue if you need first-class programmatic exports.
 
 ## Help
 
