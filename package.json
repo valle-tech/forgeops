@@ -13,7 +13,7 @@
   },
   "scripts": {
     "forgeops": "node bin/forgeops.js",
-    "lint": "node --check src/index.js"
+    "lint": "node --check src/index.js && node --check src/cli/login-prompt.js && node --check src/cli/service-root.js && node --check src/cli/register-commands.js && node --check src/commands/auth.js && node --check src/commands/create.js && node --check src/commands/delete.js && node --check src/commands/infra.js && node --check src/commands/info.js && node --check src/commands/list.js && node --check src/commands/observe.js && node --check src/commands/ops.js && node --check src/commands/quality.js && node --check src/commands/templates.js"
   },
   "engines": {
     "node": ">=18"

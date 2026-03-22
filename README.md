@@ -186,7 +186,7 @@ import { runCli } from './src/index.js';
 await runCli(process.argv);
 ```
 
-Scaffolding helpers live under `src/lib/` (`scaffold.js`, `registry.js`, etc.). They are not documented as a stable public API for dependents; for automation, prefer shelling out to `forgeops` or open an issue if you need first-class programmatic exports.
+Commands are registered from `src/cli/register-commands.js` and live under `src/commands/` (grouped by area). Shared helpers sit in `src/lib/`. None of this is a semver-stable API for npm dependents; for automation, prefer shelling out to `forgeops` or open an issue if you need first-class programmatic exports.
 
 ## Help
 
