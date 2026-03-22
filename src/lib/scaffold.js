@@ -273,17 +273,63 @@ async function writeGeneratedReadme(dest, v, templateId) {
     '',
   ];
   if (v.language === 'node') {
-    lines.push('Local dev (requires Node 20+):', '', '```bash', 'npm install', 'npm run start:dev', '```', '');
+    lines.push(
+      'Local dev (requires Node 20+):',
+      '',
+      '```bash',
+      'npm install',
+      'npm run start:dev',
+      '```',
+      '',
+      'Tests: `npm test` (unit), `npm run test:e2e` (HTTP integration).',
+      '',
+    );
   } else if (v.language === 'go') {
-    lines.push('Local dev:', '', '```bash', 'go run ./cmd/server', '```', '');
+    lines.push('Local dev:', '', '```bash', 'go run ./cmd/server', '```', '', 'Tests: `go test ./...`', '');
   } else if (v.language === 'python') {
-    lines.push('Local dev:', '', '```bash', 'pip install -r requirements.txt', 'uvicorn app.main:app --reload --port ' + v.port, '```', '');
+    lines.push(
+      'Local dev:',
+      '',
+      '```bash',
+      'pip install -r requirements.txt',
+      'uvicorn app.main:app --reload --port ' + v.port,
+      '```',
+      '',
+      'Tests: `pytest tests/`',
+      '',
+    );
   }
-  lines.push('## Endpoints', '');
+  lines.push(
+    '## Observability',
+    '',
+    '- JSON logs to stdout (`level`, `service`, `message`, `requestId`, …).',
+    '- Configure via `.env` (validated at startup).',
+    '',
+    '## Endpoints',
+    '',
+  );
   if (v.language === 'node') {
-    lines.push('| Method | Path | Description |', '| --- | --- | --- |', '| GET | / | Service info |', '| GET | /health | Liveness |', '| GET | /health/metrics | Prometheus text metrics |', '');
+    lines.push(
+      '| Method | Path | Description |',
+      '| --- | --- | --- |',
+      '| GET | / | Service info |',
+      '| GET | /payments | Example domain module |',
+      '| GET | /health | Liveness (process up) |',
+      '| GET | /ready | Readiness (e.g. DB when configured) |',
+      '| GET | /metrics | Prometheus text metrics |',
+      '',
+    );
   } else {
-    lines.push('| Method | Path | Description |', '| --- | --- | --- |', '| GET | / | Service info |', '| GET | /health | Liveness |', '| GET | /metrics | Prometheus metrics |', '');
+    lines.push(
+      '| Method | Path | Description |',
+      '| --- | --- | --- |',
+      '| GET | / | Service info |',
+      '| GET | /payments | Example domain module |',
+      '| GET | /health | Liveness |',
+      '| GET | /ready | Readiness |',
+      '| GET | /metrics | Prometheus metrics |',
+      '',
+    );
   }
   lines.push(`Template: \`${templateId}\` · Port: **${v.port}**`, '');
   await writeFile(path.join(dest, 'README.md'), lines.join('\n'), 'utf8');
@@ -396,9 +442,9 @@ export async function writeGitHubCI(dest, v) {
           python-version: '3.12'
       - name: Install and test
         run: |
-          pip install -r requirements.txt pytest ruff
-          pytest -q || true
-          ruff check . || true`;
+          pip install -r requirements.txt ruff
+          ruff check . || true
+          pytest tests/ -q`;
   } else {
     testSteps = `      - uses: actions/setup-node@v4
         with:
@@ -407,7 +453,8 @@ export async function writeGitHubCI(dest, v) {
         run: |
           npm install
           npm run build
-          npm test --if-present`;
+          npm test
+          npm run test:e2e`;
   }
 
   const content = `name: CI
@@ -466,8 +513,8 @@ async function writeGitLabCI(dest, v) {
     v.language === 'go'
       ? ['go test ./...', 'go build -o bin/server ./cmd/server']
         : v.language === 'python'
-        ? ['pip install -r requirements.txt', 'pytest -q || true']
-        : ['npm install', 'npm run build', 'npm test --if-present'];
+        ? ['pip install -r requirements.txt', 'pytest tests/ -q']
+        : ['npm install', 'npm run build', 'npm test', 'npm run test:e2e'];
   const yml = `image: ${img}
 stages: [test, build]
 test:
