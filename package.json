@@ -1,0 +1,19 @@
+{
+  "name": "forgeops",
+  "version": "0.0.1",
+  "description": "CLI for scaffolding and operating IDP-style microservices",
+  "type": "module",
+  "bin": {
+    "forgeops": "./bin/forgeops.js"
+  },
+  "scripts": {
+    "forgeops": "node bin/forgeops.js",
+    "lint": "node --check src/index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^12.1.0"
+  }
+}
