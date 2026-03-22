@@ -1,5 +1,8 @@
 # Forgeops
 
+[![npm version](https://img.shields.io/npm/v/forgeops.svg)](https://www.npmjs.com/package/forgeops)
+[![npm downloads](https://img.shields.io/npm/dm/forgeops.svg)](https://www.npmjs.com/package/forgeops)
+
 CLI for scaffolding and day-to-day operations on small backend services (NestJS, Go, or FastAPI), in the spirit of an internal developer platform: templates, Docker Compose, optional CI and Pulumi stubs, and commands that wrap common workflows.
 
 **Package on npm:** [forgeops](https://www.npmjs.com/package/forgeops)
