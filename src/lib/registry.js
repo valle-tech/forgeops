@@ -2,7 +2,7 @@ import { readFile, writeFile, mkdir, access } from 'node:fs/promises';
 import { constants } from 'node:fs';
 import path from 'node:path';
 import { registryPath, ensureForgeOpsDir } from './paths.js';
-import { readManifest, MANIFEST_FILE } from './manifest.js';
+import { readProjectConfig, projectMarkerExists } from './manifest.js';
 import { normalizeName } from './scaffold.js';
 
 async function load() {
@@ -62,7 +62,7 @@ async function fileExists(p) {
 export async function resolveServiceRoot(name, cwd = process.cwd()) {
   const key = normalizeName(name) || name;
   const reg = await getService(key);
-  if (reg?.path && (await fileExists(path.join(reg.path, MANIFEST_FILE)))) {
+  if (reg?.path && (await projectMarkerExists(reg.path))) {
     return { root: reg.path, entry: reg, source: 'registry' };
   }
   const candidates = [
@@ -72,11 +72,11 @@ export async function resolveServiceRoot(name, cwd = process.cwd()) {
   ].filter(Boolean);
 
   for (const root of candidates) {
-    if (await fileExists(path.join(root, MANIFEST_FILE))) {
+    if (await projectMarkerExists(root)) {
       let entry = reg;
       if (!entry || entry.path !== root) {
         try {
-          const m = await readManifest(root);
+          const m = await readProjectConfig(root);
           entry = manifestToEntry(m, root);
         } catch {
           entry = { name, path: root };
@@ -90,8 +90,8 @@ export async function resolveServiceRoot(name, cwd = process.cwd()) {
 
 function manifestToEntry(m, root) {
   return {
-    name: m.serviceName,
-    slug: m.serviceSlug,
+    name: m.serviceName ?? m.name,
+    slug: m.serviceSlug ?? m.slug,
     path: root,
     language: m.language,
     database: m.database,
@@ -99,7 +99,8 @@ function manifestToEntry(m, root) {
     auth: m.auth,
     ci: m.ci,
     infra: m.infra,
-    httpPort: m.httpPort,
+    httpPort: m.httpPort ?? m.port,
     repoUrl: m.repoUrl,
+    template: m.template,
   };
 }

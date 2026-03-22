@@ -1,7 +1,8 @@
 import { mkdir, readdir, readFile, writeFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { writeManifest } from './manifest.js';
+import { writeProjectConfig } from './manifest.js';
+import { customTemplatesDir } from './paths.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PKG_ROOT = path.resolve(__dirname, '..', '..');
@@ -27,6 +28,38 @@ export function templateKeyForLanguage(lang) {
   if (l === 'go') return 'go-clean';
   if (l === 'python') return 'python-clean';
   return 'nestjs-clean';
+}
+
+export function languageFromTemplateId(templateId) {
+  const t = String(templateId || '').toLowerCase();
+  if (t.includes('go')) return 'go';
+  if (t.includes('python')) return 'python';
+  return 'node';
+}
+
+export async function listAllTemplateIds() {
+  const built = await listBuiltinTemplateIds();
+  const custom = [];
+  const cdir = customTemplatesDir();
+  try {
+    const e = await readdir(cdir, { withFileTypes: true });
+    for (const d of e) {
+      if (d.isDirectory()) custom.push(d.name);
+    }
+  } catch {
+    /* none */
+  }
+  return [...new Set([...built, ...custom])].sort();
+}
+
+export async function resolveTemplateSource(templateId) {
+  const id = String(templateId || '').trim();
+  if (!id) throw new Error('Template id is required');
+  const b = builtinTemplatePath(id);
+  if (await dirExists(b)) return { path: b, id };
+  const c = path.join(customTemplatesDir(), id);
+  if (await dirExists(c)) return { path: c, id };
+  throw new Error(`Unknown template "${id}". Run: forgeops templates list`);
 }
 
 export function defaultPort(lang) {
@@ -127,25 +160,32 @@ export function builtinTemplatePath(id) {
  * @param {string} opts.ci - github | gitlab | none
  * @param {string} opts.infra - pulumi | none
  * @param {string} [opts.templatePath] - override template directory
+ * @param {number} [opts.port] - HTTP port (host + container)
+ * @param {string} [opts.templateId] - e.g. nestjs-clean
  */
 export async function scaffoldService(opts) {
   const name = normalizeName(opts.name);
   if (!name) throw new Error('Invalid service name');
   const slug = serviceSlug(name);
-  let lang = (opts.language || 'node').toLowerCase();
+  const tkey = opts.templateId || templateKeyForLanguage(opts.language || 'node');
+  const srcResolved = opts.templatePath
+    ? { path: opts.templatePath, id: tkey }
+    : await resolveTemplateSource(tkey);
+  const srcBase = srcResolved.path;
+  const templateId = srcResolved.id;
+
+  let lang = (opts.language || languageFromTemplateId(templateId)).toLowerCase();
   if (lang === 'nodejs') lang = 'node';
 
   const database = (opts.database || 'none').toLowerCase();
   const messaging = (opts.messaging || 'none').toLowerCase();
   const ci = (opts.ci || 'github').toLowerCase();
   const infra = (opts.infra || 'none').toLowerCase();
-  const port = defaultPort(lang);
-  const tkey = opts.templateId || templateKeyForLanguage(lang);
-  const srcBase = opts.templatePath || builtinTemplatePath(tkey);
-
-  if (!(await dirExists(srcBase))) {
-    throw new Error(`Template not found: ${tkey} (${srcBase})`);
-  }
+  let port =
+    opts.port !== undefined && opts.port !== null && !Number.isNaN(Number(opts.port))
+      ? Number(opts.port)
+      : defaultPort(lang);
+  if (port < 1 || port > 65535) throw new Error(`Invalid port: ${opts.port}`);
 
   const dest = path.join(opts.outDir, slug);
   if (await dirExists(dest)) {
@@ -188,21 +228,24 @@ export async function scaffoldService(opts) {
     'utf8',
   );
 
-  await writeManifest(dest, {
-    serviceName: name,
-    serviceSlug: slug,
+  await writeProjectConfig(dest, {
+    name,
+    slug,
+    template: templateId,
+    port,
     language: lang,
     database,
     messaging,
     auth: !!opts.auth,
     ci,
     infra,
-    httpPort: port,
     repoUrl: opts.repoUrl || '',
     rootPath: dest,
   });
 
-  return { dest, slug, name, vars };
+  await writeGeneratedReadme(dest, vars, templateId);
+
+  return { dest, slug, name, vars, templateId };
 }
 
 function buildEnvFile(v) {
@@ -227,10 +270,44 @@ function buildEnvFile(v) {
   return lines.join('\n');
 }
 
+async function writeGeneratedReadme(dest, v, templateId) {
+  const title = v.serviceName.replace(/\b\w/g, (c) => c.toUpperCase());
+  const lines = [
+    `# ${title} service`,
+    '',
+    '> Generated with [Forgeops](https://www.npmjs.com/package/forgeops).',
+    '',
+    '## Run',
+    '',
+    '```bash',
+    'docker compose up',
+    '```',
+    '',
+    'Uses `docker-compose.yml` in this directory (works with `docker compose` v2 or `docker-compose` v1).',
+    '',
+  ];
+  if (v.language === 'node') {
+    lines.push('Local dev (requires Node 20+):', '', '```bash', 'npm install', 'npm run start:dev', '```', '');
+  } else if (v.language === 'go') {
+    lines.push('Local dev:', '', '```bash', 'go run ./cmd/server', '```', '');
+  } else if (v.language === 'python') {
+    lines.push('Local dev:', '', '```bash', 'pip install -r requirements.txt', 'uvicorn app.main:app --reload --port ' + v.port, '```', '');
+  }
+  lines.push('## Endpoints', '');
+  if (v.language === 'node') {
+    lines.push('| Method | Path | Description |', '| --- | --- | --- |', '| GET | / | Service info |', '| GET | /health | Liveness |', '| GET | /health/metrics | Prometheus text metrics |', '');
+  } else {
+    lines.push('| Method | Path | Description |', '| --- | --- | --- |', '| GET | / | Service info |', '| GET | /health | Liveness |', '| GET | /metrics | Prometheus metrics |', '');
+  }
+  lines.push(`Template: \`${templateId}\` · Port: **${v.port}**`, '');
+  await writeFile(path.join(dest, 'README.md'), lines.join('\n'), 'utf8');
+}
+
 async function writeDockerCompose(dest, v) {
   const services = {
     [v.serviceSlug]: {
       build: '.',
+      env_file: ['.env'],
       ports: [`${v.port}:${v.port}`],
       environment: {
         PORT: String(v.port),
@@ -281,13 +358,6 @@ async function writeDockerCompose(dest, v) {
     services.rabbitmq = { image: 'rabbitmq:3-management-alpine', ports: ['5672:5672', '15672:15672'] };
     services[v.serviceSlug].environment.RABBITMQ_URL = 'amqp://guest:guest@rabbitmq:5672/';
     services[v.serviceSlug].depends_on = [...(services[v.serviceSlug].depends_on || []), 'rabbitmq'];
-  }
-
-  if (v.language === 'node') {
-    services.jaeger = {
-      image: 'jaegertracing/all-in-one:1.57',
-      ports: ['16686:16686', '4317:4317', '4318:4318'],
-    };
   }
 
   const doc = { services };
@@ -389,9 +459,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-      - run: npm ci
-      - run: npm run build --if-present
+      - run: npm install
+      - run: npm run build
       - run: npm test --if-present
   docker:
     needs: [test]
@@ -415,9 +484,9 @@ async function writeGitLabCI(dest, v) {
   const script =
     v.language === 'go'
       ? ['go test ./...', 'go build -o bin/server ./cmd/server']
-      : v.language === 'python'
+        : v.language === 'python'
         ? ['pip install -r requirements.txt', 'pytest -q || true']
-        : ['npm ci', 'npm run build --if-present', 'npm test --if-present'];
+        : ['npm install', 'npm run build', 'npm test --if-present'];
   const yml = `image: ${img}
 stages: [test, build]
 test:

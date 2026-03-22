@@ -1,8 +1,13 @@
 {
   "name": "forgeops",
-  "version": "0.0.1",
+  "version": "0.2.0",
   "description": "CLI for scaffolding and operating IDP-style microservices",
   "type": "module",
+  "files": [
+    "bin",
+    "src",
+    "templates"
+  ],
   "bin": {
     "forgeops": "./bin/forgeops.js"
   },

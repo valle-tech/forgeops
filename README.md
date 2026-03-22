@@ -51,13 +51,14 @@ node bin/forgeops.js --help
 
 ## Quick start
 
-Create a service (defaults: Node/NestJS template, GitHub Actions CI, no database):
+Create a service. With a TTY and no `--no-interactive` flag, Forgeops **prompts** for template, database, port, and other choices. Pass flags to skip prompts.
 
 ```bash
 forgeops create service payments
+forgeops create service payments --no-interactive --template nestjs-clean --db postgres --port 3001
 ```
 
-This writes a folder named `{name}-service` under the current directory (for example `payments-service`), registers it under `~/.forgeops/registry.json`, and adds a manifest at `.forgeops-manifest.json` inside the project.
+This writes a folder named `{name}-service` under the current directory (for example `payments-service`), registers it under `~/.forgeops/registry.json`, and writes **`.forgeops.json`** inside the project (`name`, `template`, `port`, plus metadata other commands use).
 
 Run it with Compose:
 
@@ -80,14 +81,17 @@ forgeops create service <name> [options]
 
 | Option | Description |
 |--------|-------------|
-| `--language <lang>` | `node` (NestJS), `go`, or `python` (FastAPI). |
-| `--db <db>` | `postgres`, `mongo`, or `none`. Adds DB service and env wiring in Compose when not `none`. |
-| `--messaging <m>` | `kafka`, `rabbitmq`, or `none`. Adds broker services and env hints when set. |
-| `--auth` | Enables JWT-related env vars and auth notes in the scaffold. |
-| `--ci <provider>` | `github` (default), `gitlab`, or `none`. |
-| `--infra <tool>` | `pulumi` adds an `infra/` placeholder stack, or `none`. |
+| `--template <id>` | e.g. `nestjs-clean`, `go-clean`, `python-clean`, or a custom template under `~/.forgeops/templates`. |
+| `--port <n>` | HTTP port (host and container). |
+| `--language <lang>` | `node` (NestJS), `go`, or `python` — inferred from `--template` when omitted. |
+| `--db <db>` | `postgres`, `mongo`, or `none`. |
+| `--messaging <m>` | `kafka`, `rabbitmq`, or `none`. |
+| `--auth` | Enables JWT-related env vars and auth notes. |
+| `--ci <provider>` | `github`, `gitlab`, or `none`. |
+| `--infra <tool>` | `pulumi` or `none`. |
 | `--output <dir>` | Parent directory for the new service folder (default: current directory). |
-| `--repo <url>` | Optional repo URL stored in the registry/manifest. |
+| `--repo <url>` | Optional repo URL stored in the registry and `.forgeops.json`. |
+| `--no-interactive` | Non-CI: skip prompts; use defaults for any option not set on the CLI. |
 
 Example:
 
@@ -108,8 +112,10 @@ Built-in templates ship inside the npm package (`nestjs-clean`, `go-clean`, `pyt
 
 Commands that take a service name resolve the project directory in this order:
 
-1. Entry in `~/.forgeops/registry.json` (path must still exist and include `.forgeops-manifest.json`).
-2. `./<name>` or `./<name>-service` under the current working directory, if a manifest is present.
+1. Entry in `~/.forgeops/registry.json` (path must still exist and include `.forgeops.json`).
+2. `./<name>` or `./<name>-service` under the current working directory, if `.forgeops.json` is present.
+
+Legacy projects with only `.forgeops-manifest.json` are still detected.
 
 So you can work inside the repo directory without registering, or rely on the registry after `create service`.
 
@@ -119,9 +125,10 @@ So you can work inside the repo directory without registering, or rely on the re
 
 - `forgeops create service <name>` — generate project from template (see options above).
 
-### Registry and project info
+### Discovery and registry
 
-- `forgeops list services` — print registered services and paths.
+- `forgeops list` — scan the **current directory** and **immediate subfolders** for `.forgeops.json` and print name, template, port, and path.
+- `forgeops list services` — print services registered in `~/.forgeops/registry.json`.
 - `forgeops info service <name>` — language, DB, port, CI/infra flags, optional repo URL.
 - `forgeops delete service <name>` — delete the project directory and registry entry.  
   - `--remove-repo` — attempts `gh repo delete` when a repo URL was recorded (requires `gh`).
@@ -161,9 +168,10 @@ So you can work inside the repo directory without registering, or rely on the re
 
 ## Generated project layout (typical)
 
-- **`.forgeops-manifest.json`** — machine-readable metadata Forgeops uses for commands.
+- **`.forgeops.json`** — project metadata (`name`, `template`, `port`, …) used by `run`, `build`, `list`, etc.
 - **`.env`** — port, logging, optional `DATABASE_URL`, messaging, JWT vars when enabled.
-- **`docker-compose.yml`** — app service plus optional Postgres, MongoDB, Kafka/Zookeeper, RabbitMQ, Jaeger (Node stacks).
+- **`docker-compose.yml`** — app service (`env_file: .env`) plus optional Postgres, MongoDB, Kafka/Zookeeper, RabbitMQ.
+- **`README.md`** — short run instructions and endpoint list for the template.
 - **`Dockerfile`** — language-specific image build.
 - **CI** — `.github/workflows/ci.yml` or `.gitlab-ci.yml` when not disabled.
 - **`infra/`** — minimal Pulumi TypeScript placeholder when `--infra pulumi` was used.

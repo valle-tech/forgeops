@@ -1,4 +1,5 @@
 import { Command } from 'commander';
+import { readFileSync } from 'node:fs';
 import { rm, readFile, writeFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -20,38 +21,54 @@ import {
   normalizeName,
 } from './lib/scaffold.js';
 import { run as runCmd, whichAvailable } from './lib/exec.js';
-import { readManifest } from './lib/manifest.js';
+import { readProjectConfig } from './lib/manifest.js';
+import { scanForgeopsProjects } from './lib/scan.js';
+import { resolveCreateOptions } from './lib/create-options.js';
+
+const PKG = JSON.parse(
+  readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+);
 
 export async function runCli(argv) {
   await ensureForgeOpsDir();
 
   const program = new Command();
-  program.name('forgeops').description('Internal developer platform CLI').version('0.1.0');
+  program.name('forgeops').description('Internal developer platform CLI').version(PKG.version);
 
   const create = program.command('create').description('Scaffold new resources');
   create
     .command('service <name>')
     .description('Generate a service from a template')
-    .option('--language <lang>', 'node | go | python', 'node')
-    .option('--db <db>', 'postgres | mongo | none', 'none')
-    .option('--messaging <m>', 'kafka | rabbitmq | none', 'none')
+    .option('--language <lang>', 'node | go | python')
+    .option('--db <db>', 'postgres | mongo | none')
+    .option('--messaging <m>', 'kafka | rabbitmq | none')
+    .option('--ci <provider>', 'github | gitlab | none')
+    .option('--infra <tool>', 'pulumi | none')
+    .option('--template <id>', 'Template id (e.g. nestjs-clean, go-clean, python-clean)')
+    .option('--port <n>', 'HTTP port (host and container)')
     .option('--auth', 'Enable JWT auth scaffolding')
-    .option('--ci <provider>', 'github | gitlab | none', 'github')
-    .option('--infra <tool>', 'pulumi | none', 'none')
     .option('--output <dir>', 'Parent directory', cwd())
     .option('--repo <url>', 'Optional repository URL to record')
-    .action(async (name, opts) => {
-      const auth = Boolean(opts.auth);
-      const { dest, slug, name: svcName, vars } = await scaffoldService({
+    .option('--no-interactive', 'Skip prompts; use defaults for any option not passed on the CLI')
+    .action(async function createServiceAction(name, opts) {
+      const o = await resolveCreateOptions(opts, this);
+      const displayName = normalizeName(name) || name;
+      console.log(`✔ Creating service: ${displayName}`);
+      console.log(`✔ Using template: ${o.template}`);
+      console.log('✔ Injecting configuration');
+      console.log('✔ Generating files...');
+      const { dest, slug, name: svcName, vars, templateId } = await scaffoldService({
         outDir: path.resolve(opts.output),
         name,
-        language: opts.language,
-        database: opts.db,
-        messaging: opts.messaging,
-        auth,
-        ci: opts.ci,
-        infra: opts.infra,
+        language: o.language,
+        database: o.database,
+        messaging: o.messaging,
+        auth: o.auth,
+        ci: o.ci,
+        infra: o.infra,
         repoUrl: opts.repo || '',
+        templateId: o.template,
+        port: o.port,
       });
       await upsertService({
         name: svcName,
@@ -65,15 +82,23 @@ export async function runCli(argv) {
         infra: vars.infra,
         httpPort: vars.port,
         repoUrl: opts.repo || '',
+        template: templateId,
       });
-      console.log(`✔ Service created: ${slug}`);
-      console.log('✔ Ready to run: docker compose up');
+      console.log('✔ Done');
+      console.log('');
+      console.log('→ Next steps:');
+      console.log(`   cd ${slug}`);
+      console.log('   docker compose up');
     });
 
-  const listCmd = program.command('list').description('List resources');
+  const listCmd = program
+    .command('list')
+    .description(
+      'Discover projects with .forgeops.json in this directory and subfolders; use `list services` for the global registry',
+    );
   listCmd
     .command('services')
-    .description('List registered services')
+    .description('List registered services (~/.forgeops/registry.json)')
     .action(async () => {
       const list = await listServices();
       if (!list.length) {
@@ -84,6 +109,21 @@ export async function runCli(argv) {
         console.log(`${s.name}\t${s.path}${s.repoUrl ? `\t${s.repoUrl}` : ''}`);
       }
     });
+  listCmd.action(async () => {
+    const root = cwd();
+    const hits = await scanForgeopsProjects(root);
+    if (!hits.length) {
+      console.log('No Forgeops projects found here (.forgeops.json in . or immediate subfolders).');
+      console.log('Tip: forgeops list services — show the global registry');
+      return;
+    }
+    for (const { path: p, config: c } of hits) {
+      const n = c?.name ?? '?';
+      const t = c?.template ?? '?';
+      const port = c?.port ?? c?.httpPort ?? '?';
+      console.log(`${n}\t${t}\tport ${port}\t${p}`);
+    }
+  });
 
   const infoCmd = program.command('info').description('Show details for a resource');
   infoCmd
@@ -98,7 +138,7 @@ export async function runCli(argv) {
       }
       let m;
       try {
-        m = await readManifest(root);
+        m = await readProjectConfig(root);
       } catch {
         m = entry;
       }
@@ -112,6 +152,7 @@ export async function runCli(argv) {
       console.log(`Auth:     ${m.auth ?? entry?.auth ?? false}`);
       console.log(`CI:       ${m.ci || entry?.ci || ''}`);
       console.log(`Infra:    ${m.infra || entry?.infra || ''}`);
+      if (m.template || entry?.template) console.log(`Template: ${m.template || entry?.template}`);
       if (m.repoUrl || entry?.repoUrl) console.log(`Repo:     ${m.repoUrl || entry?.repoUrl}`);
     });
 
@@ -167,7 +208,7 @@ export async function runCli(argv) {
         console.log('No GitHub workflow found; building Docker image locally instead.');
       }
       if (await whichAvailable('docker')) {
-        const m = await readManifest(root).catch(() => ({}));
+        const m = await readProjectConfig(root).catch(() => ({}));
         const tag = `${m.serviceSlug || name}:latest`;
         await runCmd('docker', ['build', '-t', tag, '.'], { cwd: root });
         console.log(`Built image ${tag}`);
@@ -186,7 +227,7 @@ export async function runCli(argv) {
         process.exitCode = 1;
         return;
       }
-      const m = await readManifest(root).catch(() => ({}));
+      const m = await readProjectConfig(root).catch(() => ({}));
       const tag = `${m.serviceSlug || name}-service:latest`;
       await runCmd('docker', ['build', '-t', tag, '.'], { cwd: root });
       console.log(`Built ${tag}`);
@@ -257,7 +298,7 @@ export async function runCli(argv) {
         process.exitCode = 1;
         return;
       }
-      const slug = (await readManifest(root).catch(() => entry))?.serviceSlug || `${name}-service`;
+      const slug = (await readProjectConfig(root).catch(() => entry))?.serviceSlug || `${name}-service`;
       const args = ['compose', 'logs'];
       if (opts.follow) args.push('-f');
       args.push(slug);
@@ -274,7 +315,7 @@ export async function runCli(argv) {
         process.exitCode = 1;
         return;
       }
-      const m = await readManifest(root);
+      const m = await readProjectConfig(root);
       const port = m.httpPort || 3000;
       const bases = [`http://127.0.0.1:${port}/metrics`, `http://127.0.0.1:${port}/health/metrics`];
       let lastErr;
@@ -299,7 +340,7 @@ export async function runCli(argv) {
 
   program
     .command('trace <name>')
-    .description('Open Jaeger UI (compose exposes 16686 for Node templates)')
+    .description('Open Jaeger UI in the browser (run Jaeger locally if nothing listens there)')
     .action(async (name) => {
       const { root } = await resolveServiceRoot(name);
       if (!root) {
@@ -308,7 +349,7 @@ export async function runCli(argv) {
         return;
       }
       const url = 'http://localhost:16686';
-      console.log(`Tracing UI: ${url}`);
+      console.log(`Tracing UI: ${url} (start Jaeger if needed, e.g. docker run jaegertracing/all-in-one:1.57 -p 16686:16686)`);
       if (process.platform === 'darwin') {
         spawn('open', [url], { stdio: 'ignore', detached: true }).unref();
       } else if (process.platform === 'win32') {
@@ -328,7 +369,7 @@ export async function runCli(argv) {
         process.exitCode = 1;
         return;
       }
-      const m = await readManifest(root);
+      const m = await readProjectConfig(root);
       if (m.language === 'go') await runCmd('go', ['test', './...'], { cwd: root });
       else if (m.language === 'python') await runCmd('pytest', ['-q'], { cwd: root });
       else await runCmd('npm', ['run', 'test', '--if-present'], { cwd: root });
@@ -344,7 +385,7 @@ export async function runCli(argv) {
         process.exitCode = 1;
         return;
       }
-      const m = await readManifest(root);
+      const m = await readProjectConfig(root);
       if (m.language === 'go') {
         if (await whichAvailable('golangci-lint')) await runCmd('golangci-lint', ['run'], { cwd: root });
         else await runCmd('go', ['vet', './...'], { cwd: root });
