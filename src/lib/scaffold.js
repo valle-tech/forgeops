@@ -142,7 +142,7 @@ export function projectVarsFromManifest(cfg) {
   const port = Number(cfg.httpPort ?? cfg.port ?? defaultPort(lang));
   const database = String(cfg.database || 'none').toLowerCase();
   const messaging = String(cfg.messaging || 'none').toLowerCase();
-  const modulePath = lang === 'go' ? `github.com/local/${slug}` : '';
+  const modulePath = lang === 'go' ? `example.com/local/${slug}` : '';
   const dbConn = database !== 'none' ? exampleDbUrl(database, slug) : '';
   return {
     serviceName: name,
@@ -248,7 +248,7 @@ export async function scaffoldService(opts) {
     throw new Error(`Directory already exists: ${dest}`);
   }
 
-  const modulePath = lang === 'go' ? `github.com/local/${slug}` : '';
+  const modulePath = lang === 'go' ? `example.com/local/${slug}` : '';
   const dbConn = database !== 'none' ? exampleDbUrl(database, slug) : '';
 
   const vars = {
@@ -331,7 +331,7 @@ async function writeGeneratedReadme(dest, v, templateId) {
   const lines = [
     `# ${title} service`,
     '',
-    '> Generated with [Forgeops](https://www.npmjs.com/package/forgeops).',
+    '> Generated with Forgeops (npm package name: forgeops).',
     '',
     '## Run',
     '',

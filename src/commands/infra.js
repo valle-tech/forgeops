@@ -12,7 +12,7 @@ export function registerInfraCommands(program) {
       if (!ctx) return;
       const infra = path.join(ctx.root, 'infra');
       if (!(await whichAvailable('pulumi'))) {
-        console.error('pulumi CLI not found. Install from https://www.pulumi.com/docs/install/');
+        console.error('pulumi CLI not found. Install the Pulumi CLI (official installer or your OS package manager).');
         process.exitCode = 1;
         return;
       }

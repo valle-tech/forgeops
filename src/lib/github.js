@@ -1,10 +1,11 @@
-const GITHUB_API = 'https://api.github.com';
+import { githubRestApiBase } from './github-urls.js';
+
+const GITHUB_API = githubRestApiBase();
 
 export function getGithubToken() {
   return (process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '').trim();
 }
 
-/** Env first, then ~/.forgeops/config.json `github.token`. */
 export async function resolveGithubToken() {
   const env = getGithubToken();
   if (env) return env;

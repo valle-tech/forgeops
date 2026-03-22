@@ -1,12 +1,8 @@
 # Forgeops
 
-[![npm version](https://img.shields.io/npm/v/forgeops.svg?cacheSeconds=60)](https://www.npmjs.com/package/forgeops)
-[![npm downloads](https://img.shields.io/npm/dm/forgeops.svg)](https://www.npmjs.com/package/forgeops)
-[![license](https://img.shields.io/npm/l/forgeops.svg)](https://github.com/valle-tech/forgeops/blob/main/LICENSE)
+Published on the public npm registry as **`forgeops`**.
 
 CLI for scaffolding and day-to-day operations on small backend services (NestJS, Go, or FastAPI), in the spirit of an internal developer platform: templates, Docker Compose, optional CI and Pulumi stubs, and commands that wrap common workflows.
-
-**Package on npm:** [forgeops](https://www.npmjs.com/package/forgeops)
 
 ## Requirements
 
@@ -191,7 +187,7 @@ So you can work inside the repo directory without registering, or rely on the re
 - **`.forgeops.json`** — project metadata (`name`, `template`, `port`, …) used by `run`, `build`, `list`, etc.
 - **`.env`** — port, logging, optional `DATABASE_URL`, messaging, JWT vars when enabled.
 - **`docker-compose.yml`** — app service (`env_file: .env`) plus optional Postgres, MongoDB, Kafka/Zookeeper, RabbitMQ.
-- **`README.md`** — short run instructions and endpoint list for the template.
+- **Project readme** — short run instructions and endpoint list for the template.
 - **`Dockerfile`** — language-specific image build.
 - **CI** — `.github/workflows/ci.yml` (test + Docker build; **push to GHCR** `ghcr.io/<owner>/<repo>:latest` on pushes to `main`) or `.gitlab-ci.yml` when GitLab is selected.
 - **`infra/`** — minimal Pulumi TypeScript placeholder when `--infra pulumi` was used.

@@ -32,7 +32,7 @@ export function registerObserveCommands(program) {
       const { root } = ctx;
       const m = await readProjectConfig(root);
       const port = m.httpPort || 3000;
-      const bases = [`http://127.0.0.1:${port}/metrics`, `http://127.0.0.1:${port}/health/metrics`];
+      const bases = [`http://localhost:${port}/metrics`, `http://localhost:${port}/health/metrics`];
       let lastErr;
       for (const url of bases) {
         try {

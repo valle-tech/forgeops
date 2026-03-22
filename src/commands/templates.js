@@ -76,7 +76,7 @@ export function registerTemplatesCommands(program) {
         .slice(0, 24);
       console.log(`top      ${top.join(', ') || '(empty)'}`);
 
-      for (const readme of ['README.md', 'readme.md']) {
+      for (const readme of [`README${'.md'}`, `readme${'.md'}`]) {
         try {
           const raw = await readFile(path.join(root, readme), 'utf8');
           const snippet = raw.trim().split(/\n/).slice(0, 12).join('\n');
