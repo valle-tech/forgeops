@@ -42,6 +42,51 @@ Run once without installing globally:
 npx forgeops --help
 ```
 
+## Forgeops Dashboard (optional web UI)
+
+The **[Forgeops Dashboard](https://github.com/valle-tech/forgeops-dashboard)** is a local Next.js UI that mirrors what you can do from the terminal: browse registered services, scaffold new ones with the same flags as **`forgeops create service`**, inspect templates, and run common operations against projects on **your machine**. It shells out to the **Forgeops CLI** and reads the same **`~/.forgeops/registry.json`** and **`~/.forgeops/config.json`** as the CLI.
+
+### When to use it
+
+- You prefer a browser over remembering every **`create service`** flag.
+- You want a single place to see **recent activity**, **service health**, and links into **logs / metrics / tests / CI** views per service.
+
+The dashboard does not replace the CLI for automation (CI, scripts); install **`forgeops`** from npm as above either way.
+
+### Setup
+
+1. **Install the CLI** (global or local) so the dashboard can invoke it:
+
+   ```bash
+   npm install -g forgeops
+   ```
+
+2. **Clone and run the dashboard** ([repository](https://github.com/valle-tech/forgeops-dashboard)):
+
+   ```bash
+   git clone https://github.com/valle-tech/forgeops-dashboard.git
+   cd forgeops-dashboard
+   npm install
+   npm run dev
+   ```
+
+   Open **http://localhost:3000** (or the URL Next.js prints).
+
+3. **Point the dashboard at your Forgeops CLI** if it is not next to the dashboard checkout. By default the app looks for **`bin/forgeops.js`** under **`../cli`** relative to the dashboard root (monorepo-style layout). Override with:
+
+   ```bash
+   export FORGEOPS_CLI_ROOT=/path/to/forgeops/cli
+   ```
+
+   That directory must contain **`bin/forgeops.js`** (the same layout as the [forgeops](https://github.com/valle-tech/forgeops) CLI package).
+
+4. **Where new services are created** matches the CLI: projects go under the configured output directory. You can set:
+
+   - **`FORGEOPS_SERVICES_OUTPUT`** — absolute path where **`forgeops create service`** writes **`{name}-service`**, or  
+   - **`dashboard.servicesOutputPath`** in **`~/.forgeops/config.json`** (also editable under **Settings** in the UI).
+
+After that, use **Create service**, **Services**, **Templates**, and **Settings** in the app; they call the same **`forgeops`** binary you use from the shell.
+
 ### Development (this repository)
 
 If you are working from a clone instead of the published package:
