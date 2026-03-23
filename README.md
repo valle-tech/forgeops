@@ -1,6 +1,5 @@
 # Forgeops
 
-Published on the public npm registry as **`forgeops`**.
 [![npm version](https://img.shields.io/npm/v/forgeops.svg?cacheSeconds=60)](https://www.npmjs.com/package/forgeops)
 [![npm downloads](https://img.shields.io/npm/dm/forgeops.svg)](https://www.npmjs.com/package/forgeops)
 [![license](https://img.shields.io/npm/l/forgeops.svg)](https://github.com/valle-tech/forgeops/blob/main/LICENSE)
