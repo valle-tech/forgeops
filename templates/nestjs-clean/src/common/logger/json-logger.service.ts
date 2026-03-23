@@ -36,7 +36,6 @@ export class JsonLoggerService implements LoggerService {
     logger.info(msg, context ? { context, nestLevel: 'verbose' } : { nestLevel: 'verbose' });
   }
 
-  /** Structured log with arbitrary fields (e.g. action). */
   infoStructured(message: string, fields: Record<string, unknown>) {
     logger.info(message, fields);
   }

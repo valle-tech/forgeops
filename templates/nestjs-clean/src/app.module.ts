@@ -6,7 +6,7 @@ import { JsonLoggerService } from './common/logger/json-logger.service';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { HealthModule } from './modules/health/health.module';
 import { PaymentsModule } from './modules/payments/payments.module';
-
+{{NEST_EXTRA_IMPORTS}}
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -15,6 +15,7 @@ import { PaymentsModule } from './modules/payments/payments.module';
       validationSchema: envValidationSchema,
       validationOptions: { abortEarly: false },
     }),
+    {{NEST_MODULE_IMPORTS}}
     HealthModule,
     PaymentsModule,
   ],

@@ -58,7 +58,6 @@ async function fileExists(p) {
   }
 }
 
-/** Resolve service directory: registry → cwd/name → cwd/name-service, with manifest. */
 export async function resolveServiceRoot(name, cwd = process.cwd()) {
   const key = normalizeName(name) || name;
   const reg = await getService(key);
@@ -97,6 +96,11 @@ function manifestToEntry(m, root) {
     database: m.database,
     messaging: m.messaging,
     auth: m.auth,
+    graphql: m.graphql,
+    oauth: m.oauth,
+    redis: m.redis,
+    observe: m.observe,
+    architecture: m.architecture,
     ci: m.ci,
     infra: m.infra,
     httpPort: m.httpPort ?? m.port,

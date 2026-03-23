@@ -104,9 +104,14 @@ forgeops create service <name> [options]
 | `--language <lang>` | `node` (NestJS), `go`, or `python` — inferred from `--template` when omitted. |
 | `--db <db>` | `postgres`, `mongo`, or `none`. |
 | `--messaging <m>` | `kafka`, `rabbitmq`, or `none`. |
-| `--auth` | Enables JWT-related env vars and auth notes. |
+| `--arch <name>` | Architecture preset; only `clean` (Clean Architecture / DDD-style modules) is supported today. |
+| `--auth` | JWT + RBAC scaffolding (Nest/Go/Python) and `FORGEOPS_AUTH.md`. |
+| `--graphql` | NestJS only: GraphQL (Apollo) alongside REST. |
+| `--oauth` | OAuth env placeholders + `FORGEOPS_OAUTH.md` (Google/GitHub). |
+| `--redis` | Adds Redis to `docker-compose` and `REDIS_URL`. |
+| `--no-observe` | Skip OpenTelemetry tracing scaffolding (default is on). |
 | `--ci <provider>` | `github`, `gitlab`, or `none`. |
-| `--infra <tool>` | `pulumi` or `none`. |
+| `--infra <tool>` | `pulumi` (AWS starter in `infra/`) or `none`. |
 | `--output <dir>` | Parent directory for the new service folder (default: current directory). |
 | `--repo <url>` | Optional repo URL stored in the registry and `.forgeops.json` (overridden if `--github` succeeds). |
 | `--github` | Create a GitHub repo and push the scaffold (requires `GITHUB_TOKEN` / `GH_TOKEN` and **git**). |

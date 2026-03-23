@@ -1,6 +1,7 @@
 import time
 import uuid
 
+{{PY_OTEL_SETUP}}{{PY_AUTH_IMPORTS}}
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -116,6 +117,7 @@ def create_app() -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(payments_router)
+    {{PY_AUTH_ROUTER}}
     return app
 
 

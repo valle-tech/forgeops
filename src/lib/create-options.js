@@ -7,6 +7,14 @@ import {
   defaultPort,
 } from './scaffold.js';
 
+function parseArch(raw) {
+  const a = String(raw || 'clean').toLowerCase();
+  if (a !== 'clean') {
+    throw new Error(`Unsupported --arch "${raw}". Only "clean" is available today.`);
+  }
+  return a;
+}
+
 export async function resolveCreateOptions(opts, command) {
   const fromCli = (k) => command.getOptionValueSource(k) === 'cli';
   const interactive =
@@ -63,12 +71,45 @@ export async function resolveCreateOptions(opts, command) {
       port = await askPort(defaultPort(language));
     }
 
+    let architecture = fromCli('arch') ? parseArch(opts.arch) : parseArch('clean');
+
     let auth;
     if (fromCli('auth')) {
       auth = Boolean(opts.auth);
     } else {
-      const a = await question('Enable JWT scaffolding? [y/N]: ');
+      const a = await question('Enable JWT + RBAC scaffolding? [y/N]: ');
       auth = /^y(es)?$/i.test(a);
+    }
+
+    let graphql = false;
+    if (language === 'node') {
+      if (fromCli('graphql')) graphql = Boolean(opts.graphql);
+      else {
+        const g = await question('Add GraphQL (NestJS)? [y/N]: ');
+        graphql = /^y(es)?$/i.test(g);
+      }
+    }
+
+    let oauth;
+    if (fromCli('oauth')) oauth = Boolean(opts.oauth);
+    else {
+      const o = await question('Add OAuth env placeholders (Google/GitHub)? [y/N]: ');
+      oauth = /^y(es)?$/i.test(o);
+    }
+
+    let redis;
+    if (fromCli('redis')) redis = Boolean(opts.redis);
+    else {
+      const r = await question('Include Redis in docker-compose? [y/N]: ');
+      redis = /^y(es)?$/i.test(r);
+    }
+
+    let observe = true;
+    if (opts.observe === false) {
+      observe = false;
+    } else {
+      const o = await question('Enable OpenTelemetry tracing scaffolding? [Y/n]: ');
+      observe = !/^n(o)?$/i.test(o);
     }
 
     let github;
@@ -89,7 +130,12 @@ export async function resolveCreateOptions(opts, command) {
       ci,
       infra,
       port,
+      architecture,
       auth,
+      graphql,
+      oauth,
+      redis,
+      observe,
       github,
       githubPublic: Boolean(opts.githubPublic),
     };
@@ -107,6 +153,8 @@ export async function resolveCreateOptions(opts, command) {
     port = defaultPort(language);
   }
 
+  const architecture = parseArch(opts.arch);
+
   return {
     template,
     language,
@@ -115,7 +163,12 @@ export async function resolveCreateOptions(opts, command) {
     ci: opts.ci ?? 'github',
     infra: opts.infra ?? 'none',
     port,
+    architecture,
     auth: Boolean(opts.auth),
+    graphql: Boolean(opts.graphql) && language === 'node',
+    oauth: Boolean(opts.oauth),
+    redis: Boolean(opts.redis),
+    observe: opts.observe !== false,
     github: Boolean(opts.github),
     githubPublic: Boolean(opts.githubPublic),
   };

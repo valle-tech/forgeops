@@ -35,16 +35,11 @@ export async function composeFileInDir(cwd) {
       await access(path.join(cwd, f), constants.F_OK);
       return f;
     } catch {
-      /* try next */
     }
   }
   return null;
 }
 
-/**
- * Run `docker compose up` (v2) or fall back to `docker-compose` (v1).
- * Requires docker-compose.yml or docker-compose.yaml in cwd.
- */
 export async function runDockerComposeUp(cwd, { detach = false } = {}) {
   const file = await composeFileInDir(cwd);
   if (!file) {
@@ -64,9 +59,6 @@ export async function runDockerComposeUp(cwd, { detach = false } = {}) {
   }
 }
 
-/**
- * Stream `docker compose logs` for a service (Compose service name = slug).
- */
 export async function runDockerComposeLogs(cwd, serviceName, { follow = true } = {}) {
   const file = await composeFileInDir(cwd);
   if (!file) {

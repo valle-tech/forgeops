@@ -1,3 +1,4 @@
+{{NEST_INSTRUMENT_IMPORT}}
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';

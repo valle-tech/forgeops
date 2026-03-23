@@ -1,0 +1,3 @@
+name: {{SERVICE_SLUG}}
+runtime: nodejs
+description: Forgeops AWS stack (VPC, ECS Fargate, RDS, S3) for {{SERVICE_NAME}}

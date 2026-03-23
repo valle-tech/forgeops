@@ -21,7 +21,12 @@ export function registerCreateCommands(program) {
     .option('--infra <tool>', 'pulumi | none')
     .option('--template <id>', 'Template id (e.g. nestjs-clean, go-clean, python-clean)')
     .option('--port <n>', 'HTTP port (host and container)')
-    .option('--auth', 'Enable JWT auth scaffolding')
+    .option('--arch <name>', 'Architecture preset (only: clean)', 'clean')
+    .option('--auth', 'Enable JWT auth + RBAC scaffolding')
+    .option('--graphql', 'Add GraphQL (NestJS only)')
+    .option('--oauth', 'Add OAuth env placeholders (Google/GitHub)')
+    .option('--redis', 'Include Redis in docker-compose')
+    .option('--no-observe', 'Skip OpenTelemetry tracing scaffolding')
     .option('--github', 'Create GitHub repository and push initial commit (needs GITHUB_TOKEN or GH_TOKEN)')
     .option('--github-public', 'With --github, create a public repository (default: private)')
     .option('--output <dir>', 'Parent directory', cwd())
@@ -41,6 +46,11 @@ export function registerCreateCommands(program) {
         database: o.database,
         messaging: o.messaging,
         auth: o.auth,
+        graphql: o.graphql,
+        oauth: o.oauth,
+        redis: o.redis,
+        observe: o.observe,
+        architecture: o.architecture,
         ci: o.ci,
         infra: o.infra,
         repoUrl: opts.repo || '',
@@ -94,6 +104,11 @@ export function registerCreateCommands(program) {
         database: vars.database,
         messaging: vars.messaging,
         auth: vars.auth,
+        graphql: vars.graphql,
+        oauth: vars.oauth,
+        redis: vars.redis,
+        observe: vars.observe,
+        architecture: vars.architecture,
         ci: vars.ci,
         infra: vars.infra,
         httpPort: vars.port,

@@ -26,6 +26,9 @@ export function registerInfoCommands(program) {
       const port = m.httpPort ?? m.port ?? entry?.httpPort ?? '—';
       const db = m.database ?? entry?.database ?? 'none';
       const messaging = m.messaging ?? entry?.messaging ?? 'none';
+      const auth = m.auth ?? entry?.auth;
+      const graphql = m.graphql ?? entry?.graphql;
+      const observe = m.observe ?? entry?.observe;
       const features = Array.isArray(m.features) ? m.features.join(', ') : '—';
 
       console.log(`template   ${template}`);
@@ -33,6 +36,9 @@ export function registerInfoCommands(program) {
       console.log(`port       ${port}`);
       console.log(`db         ${db}`);
       if (messaging && messaging !== 'none') console.log(`messaging  ${messaging}`);
+      if (auth) console.log(`auth       jwt`);
+      if (graphql) console.log(`graphql    on`);
+      if (observe === false) console.log(`observe    off`);
       console.log(`path       ${root}`);
       if (features !== '—') console.log(`features   ${features}`);
 
@@ -45,7 +51,6 @@ export function registerInfoCommands(program) {
           await access(path.join(root, 'docker-compose.yaml'), constants.F_OK);
           composeLine = 'compose    docker-compose.yaml';
         } catch {
-          /* keep (none) */
         }
       }
       console.log(composeLine);

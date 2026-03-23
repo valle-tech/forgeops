@@ -25,6 +25,11 @@ export function normalizeProjectConfig(j) {
     database: j.database,
     messaging: j.messaging,
     auth: j.auth,
+    graphql: j.graphql,
+    oauth: j.oauth,
+    redis: j.redis,
+    observe: j.observe,
+    architecture: j.architecture,
     ci: j.ci,
     infra: j.infra,
     repoUrl: j.repoUrl,
@@ -66,6 +71,11 @@ export async function writeProjectConfig(dir, data) {
     database: data.database ?? 'none',
     messaging: data.messaging ?? 'none',
     auth: Boolean(data.auth),
+    graphql: Boolean(data.graphql),
+    oauth: Boolean(data.oauth),
+    redis: Boolean(data.redis),
+    observe: data.observe !== false,
+    architecture: data.architecture ?? 'clean',
     ci: data.ci ?? 'github',
     infra: data.infra ?? 'none',
     repoUrl: data.repoUrl || '',
@@ -92,7 +102,6 @@ export async function patchForgeopsJson(dir, patch) {
   await writeFile(p, JSON.stringify(j, null, 2), 'utf8');
 }
 
-/** Append unique feature id for `forgeops add feature`. */
 export async function appendForgeopsFeature(dir, featureId) {
   const p = path.join(dir, FORGEOPS_JSON);
   const raw = await readFile(p, 'utf8');
@@ -103,14 +112,12 @@ export async function appendForgeopsFeature(dir, featureId) {
   await writeFile(p, JSON.stringify(j, null, 2), 'utf8');
 }
 
-/** Add or replace env keys (does not remove lines; skips keys already set). */
 export async function mergeEnvFile(dir, entries) {
   const p = path.join(dir, '.env');
   let content = '';
   try {
     content = await readFile(p, 'utf8');
   } catch {
-    /* new file */
   }
   const lines = content.split(/\n/);
   const keys = new Set(
@@ -130,7 +137,6 @@ export async function mergeEnvFile(dir, entries) {
   if (changed || !content) await writeFile(p, out, 'utf8');
 }
 
-/** Remove feature id from `.forgeops.json` features array. */
 export async function removeForgeopsFeature(dir, featureId) {
   const p = path.join(dir, FORGEOPS_JSON);
   const raw = await readFile(p, 'utf8');
@@ -140,7 +146,6 @@ export async function removeForgeopsFeature(dir, featureId) {
   await writeFile(p, JSON.stringify(j, null, 2), 'utf8');
 }
 
-/** Drop env lines whose key is in `keys`. */
 export async function removeEnvKeys(dir, keys) {
   const set = new Set(keys);
   const p = path.join(dir, '.env');

@@ -12,7 +12,6 @@ type Config struct {
 	DatabaseURL string
 }
 
-// MustLoad validates required env and fails fast.
 func MustLoad() *Config {
 	port := os.Getenv("PORT")
 	if port == "" {

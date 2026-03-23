@@ -62,7 +62,6 @@ export function registerTemplatesCommands(program) {
             await stat(path.join(root, 'requirements.txt'));
             stack = 'python (requirements.txt)';
           } catch {
-            /* keep unknown */
           }
         }
       }
@@ -83,7 +82,6 @@ export function registerTemplatesCommands(program) {
           console.log(`readme   (${readme}, first lines)\n${snippet}`);
           return;
         } catch {
-          /* next */
         }
       }
       console.log('readme   (none)');
