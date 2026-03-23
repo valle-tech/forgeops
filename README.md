@@ -3,14 +3,15 @@
 [![npm version](https://img.shields.io/npm/v/forgeops.svg?cacheSeconds=60)](https://www.npmjs.com/package/forgeops)
 [![npm downloads](https://img.shields.io/npm/dm/forgeops.svg)](https://www.npmjs.com/package/forgeops)
 [![license](https://img.shields.io/npm/l/forgeops.svg)](https://github.com/valle-tech/forgeops/blob/main/LICENSE)
-[![Socket Badge](https://badge.socket.dev/npm/package/forgeops/0.0.8)](https://badge.socket.dev/npm/package/forgeops/0.0.8)
+[![Socket Badge](https://badge.socket.dev/npm/package/forgeops/0.0.9)](https://badge.socket.dev/npm/package/forgeops/0.0.9)
 
-CLI for scaffolding and day-to-day operations on small backend services (NestJS, Go, or FastAPI), in the spirit of an internal developer platform: templates, Docker Compose, optional CI and Pulumi stubs, and commands that wrap common workflows.
+CLI for scaffolding and day-to-day operations on small backend services (NestJS, Go, or FastAPI), in the spirit of an internal developer platform. **`forgeops create service`** copies a **built-in template**, optionally applies **feature fragments** (JWT/RBAC, GraphQL, OpenTelemetry, language-specific auth), generates **Docker Compose**, **CI** (GitHub Actions or GitLab CI), and an optional **AWS Pulumi** stack under `infra/`. Other commands wrap build, run, logs, metrics, tests, and Pulumi workflows.
 
 ## Requirements
 
 - **Node.js 18+**
 - For generated services and several commands: **Docker** (with Compose v2: `docker compose`)
+- For **Go** scaffolds: **Go 1.22+** on your `PATH` is recommended — Forgeops runs **`go mod tidy`** after create when `go` is available so modules and `go.sum` are consistent.
 - Optional: **Pulumi** (`provision` / `destroy`), **GitHub CLI** (`gh`, for `delete --remove-repo` hints), **curl** (for `metrics` if you prefer it over Node’s `fetch`)
 - Optional: **git** and a **GitHub personal access token** (`GITHUB_TOKEN` or `GH_TOKEN`) when using `create service --github` to create a remote repository and push
 
@@ -55,11 +56,23 @@ node bin/forgeops.js --help
 
 ## Quick start
 
-Create a service. With a TTY and no `--no-interactive` flag, Forgeops **prompts** for template, database, port, and other choices. Pass flags to skip prompts.
+Create a service. With a TTY and no `--no-interactive` flag, Forgeops **prompts** for template, database, messaging, CI, infra, port, JWT/RBAC, GraphQL (NestJS), OAuth placeholders, Redis, OpenTelemetry, and GitHub push. Pass flags to skip prompts.
 
 ```bash
 forgeops create service payments
 forgeops create service payments --no-interactive --template nestjs-clean --db postgres --port 3001
+forgeops create service payments \
+  --no-interactive \
+  --language node \
+  --arch clean \
+  --db postgres \
+  --messaging kafka \
+  --auth \
+  --graphql \
+  --redis \
+  --ci github \
+  --infra pulumi \
+  --output ~/src
 ```
 
 ### Create the GitHub repo and push (optional)
@@ -75,7 +88,7 @@ Forgeops calls the GitHub API to create **`payments-service`**, runs `git init` 
 
 With a TTY and a token in the environment, you’ll be asked whether to create the repo unless you pass **`--no-interactive`** (then you must pass **`--github`** explicitly).
 
-This writes a folder named `{name}-service` under the current directory (for example `payments-service`), registers it under `~/.forgeops/registry.json`, and writes **`.forgeops.json`** inside the project (`name`, `template`, `port`, plus metadata other commands use).
+This writes a folder named `{name}-service` under the current directory (for example `payments-service`), registers it under `~/.forgeops/registry.json`, and writes **`.forgeops.json`** inside the project with metadata other commands use: `name`, `template`, `port`, `language`, `database`, `messaging`, `auth`, `graphql`, `oauth`, `redis`, `observe`, `architecture`, `ci`, `infra`, and optional `repoUrl`.
 
 Run it with Compose:
 
@@ -117,20 +130,9 @@ forgeops create service <name> [options]
 | `--github-public` | Make the new GitHub repository public (default: private). |
 | `--no-interactive` | Non-CI: skip prompts; use defaults for any option not set on the CLI. |
 
-Example:
+**After create (Node):** run **`npm install`** in the new folder — optional features merge extra `dependencies` into `package.json`. **Go** projects run **`go mod tidy`** automatically when `go` is available.
 
-```bash
-forgeops create service orders \
-  --language go \
-  --db postgres \
-  --messaging kafka \
-  --auth \
-  --ci github \
-  --infra pulumi \
-  --output ~/src
-```
-
-Built-in templates ship inside the npm package (`nestjs-clean`, `go-clean`, `python-clean`). Files may contain placeholders such as `{{SERVICE_NAME}}`, `{{SERVICE_SLUG}}`, and `{{PORT}}`, which Forgeops replaces when copying.
+Built-in **templates** ship under `templates/` in the npm package (`nestjs-clean`, `go-clean`, `python-clean`). Internal bundles such as `templates/_pulumi-aws` are used when generating `infra/` and are not listed as user-facing template IDs. **Fragments** (optional overlays: auth, GraphQL, OTEL, etc.) ship under `fragments/` and are merged after the base tree. Template files use placeholders such as `{{SERVICE_NAME}}`, `{{SERVICE_SLUG}}`, `{{PORT}}`, plus feature-specific tokens resolved at scaffold time.
 
 ## How Forgeops finds a service
 
@@ -153,7 +155,7 @@ So you can work inside the repo directory without registering, or rely on the re
 
 - `forgeops list` — scan the **current directory** and **immediate subfolders** for `.forgeops.json` and print name, template, port, and path.
 - `forgeops list services` — print services registered in `~/.forgeops/registry.json`.
-- `forgeops info service <name>` — language, DB, port, CI/infra flags, optional repo URL.
+- `forgeops info service <name>` — template, repo URL, port, DB, messaging, path, compose file; also shows **auth** / **graphql** / **observe** when set in the manifest.
 - `forgeops delete service <name>` — delete the project directory and registry entry.  
   - `--remove-repo` — attempts `gh repo delete` when a repo URL was recorded (requires `gh`).
 
@@ -172,7 +174,7 @@ So you can work inside the repo directory without registering, or rely on the re
 
 - `forgeops logs <name>` — runs `docker compose logs -f <service-slug>` in the project directory (stream until you interrupt).
 - `forgeops metrics <name>` — HTTP GET to `/metrics` or `/health/metrics` on the service port from the manifest.
-- `forgeops trace <name>` — prints the Jaeger UI URL and opens it in the default browser (Compose for Node templates includes Jaeger on port 16686 when applicable).
+- `forgeops trace <name>` — prints a local Jaeger UI URL (default `http://localhost:16686`) and opens it; run a Jaeger or OTLP-compatible backend yourself if nothing is listening (for example `docker run jaegertracing/all-in-one` — see command output).
 
 ### Tests and lint
 
@@ -181,7 +183,7 @@ So you can work inside the repo directory without registering, or rely on the re
 
 ### Templates
 
-- `forgeops templates list` — built-in templates (shipped with this package) and custom dirs under `~/.forgeops/templates`.
+- `forgeops templates list` — built-in templates (directories under `templates/` in the package, excluding internal `_…` names) and custom dirs under `~/.forgeops/templates`.
 - `forgeops templates add <name>` — copies `./<name>` from the current directory into `~/.forgeops/templates` (must be a directory). Use for your own template packs; wiring `create` to pick a custom template by id is something you can extend in code.
 - `forgeops templates update` — runs `git pull` in `~/.forgeops/templates` when that folder is a Git clone.
 
@@ -192,13 +194,14 @@ So you can work inside the repo directory without registering, or rely on the re
 
 ## Generated project layout (typical)
 
-- **`.forgeops.json`** — project metadata (`name`, `template`, `port`, …) used by `run`, `build`, `list`, etc.
-- **`.env`** — port, logging, optional `DATABASE_URL`, messaging, JWT vars when enabled.
-- **`docker-compose.yml`** — app service (`env_file: .env`) plus optional Postgres, MongoDB, Kafka/Zookeeper, RabbitMQ.
-- **Project readme** — short run instructions and endpoint list for the template.
+- **`.forgeops.json`** — project metadata used by `run`, `build`, `list`, `info`, etc. (includes flags such as `auth`, `graphql`, `observe`, `redis`, `architecture`).
+- **`.env`** — port, `LOG_FORMAT`, optional `DATABASE_URL`, messaging brokers, `JWT_*` when `--auth`, OAuth keys when `--oauth`, `REDIS_URL` when `--redis`, `OTEL_*` when observability scaffolding is enabled (`--no-observe` turns off OTEL fragments and extra env keys).
+- **`docker-compose.yml`** — app service (`env_file: .env`) plus optional Postgres, MongoDB, Kafka/Zookeeper, RabbitMQ, **Redis** (`--redis`).
+- **`FORGEOPS_*.md`** — short docs when relevant: `FORGEOPS_AUTH.md`, `FORGEOPS_OAUTH.md`, `FORGEOPS_MESSAGING.md`, `FORGEOPS_DATABASE.md`, `FORGEOPS_OBSERVE.md`.
+- **Project readme** — run instructions, feature list, and endpoint table for the template.
 - **`Dockerfile`** — language-specific image build.
-- **CI** — `.github/workflows/ci.yml` (test + Docker build; **push to GHCR** `ghcr.io/<owner>/<repo>:latest` on pushes to `main`) or `.gitlab-ci.yml` when GitLab is selected.
-- **`infra/`** — minimal Pulumi TypeScript placeholder when `--infra pulumi` was used.
+- **CI** — **GitHub:** `.github/workflows/ci.yml` with jobs for **test**, **Docker build/push** to **GHCR** (`ghcr.io/<owner>/<repo>:latest` on pushes to `main`), and **manual workflow_dispatch** deploy placeholders for **dev / staging / prod** (replace echo steps with your deploy). **GitLab:** `.gitlab-ci.yml` with test, docker build, and manual deploy stages.
+- **`infra/`** — when `--infra pulumi`, an **AWS-oriented** Pulumi TypeScript project (`templates/_pulumi-aws`): default VPC wiring, S3, ECR, ECS cluster, RDS (Postgres), DynamoDB table, random DB password (review before production).
 
 ## Using Forgeops from Node.js (advanced)
 
@@ -210,7 +213,7 @@ import { runCli } from './src/index.js';
 await runCli(process.argv);
 ```
 
-Commands are registered from `src/cli/register-commands.js` and live under `src/commands/` (grouped by area). Shared helpers sit in `src/lib/`. None of this is a semver-stable API for npm dependents; for automation, prefer shelling out to `forgeops` or open an issue if you need first-class programmatic exports.
+Commands are registered from `src/cli/register-commands.js` and live under `src/commands/` (grouped by area). Scaffolding logic is split under `src/lib/scaffold/` (`scaffold-service`, `compose`, `ci`, `pulumi`, `fragments`, etc.); `src/lib/scaffold.js` re-exports the public surface. Other shared helpers sit in `src/lib/`. None of this is a semver-stable API for npm dependents; for automation, prefer shelling out to `forgeops` or open an issue if you need first-class programmatic exports.
 
 ## Help
 
