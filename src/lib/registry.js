@@ -59,6 +59,16 @@ async function fileExists(p) {
 }
 
 export async function resolveServiceRoot(name, cwd = process.cwd()) {
+  if ((!name || name === '.' || name === './') && (await projectMarkerExists(cwd))) {
+    let entry = null;
+    try {
+      const m = await readProjectConfig(cwd);
+      entry = manifestToEntry(m, cwd);
+    } catch {
+      entry = { name: path.basename(cwd), path: cwd };
+    }
+    return { root: cwd, entry, source: 'manifest' };
+  }
   const key = normalizeName(name) || name;
   const reg = await getService(key);
   if (reg?.path && (await projectMarkerExists(reg.path))) {

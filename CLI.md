@@ -263,6 +263,8 @@ Now your CLI becomes **DevOps-aware**
 
 ```bash
 forgeops deploy payments
+forgeops deploy payments --env dev --wait
+forgeops deploy payments --env prod --image-tag release-2026-05-08
 ```
 
 ![Image](https://miro.medium.com/v2/resize%3Afit%3A2000/1%2ACH2R5552IjZCTqhgaBpXHw.jpeg)
@@ -275,9 +277,9 @@ forgeops deploy payments
 
 What it does:
 
-* triggers CI/CD
-* builds Docker image
-* deploys to cloud
+* for services scaffolded with `--infra pulumi`, it provisions the target Pulumi stack, pushes an image to ECR, and updates the ECS service
+* `--wait` blocks for ECS stability and `/health`
+* without Pulumi infra, it falls back to triggering CI/CD and building a local Docker image
 
 ---
 

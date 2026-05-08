@@ -19,6 +19,56 @@ export function run(cmd, args, opts = {}) {
   });
 }
 
+export function runCapture(cmd, args, opts = {}) {
+  return new Promise((resolve, reject) => {
+    let stdout = '';
+    let stderr = '';
+    const child = spawn(cmd, args, {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      shell: false,
+      cwd: opts.cwd,
+      env: { ...process.env, ...opts.env },
+    });
+    child.stdout?.setEncoding('utf8');
+    child.stderr?.setEncoding('utf8');
+    child.stdout?.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    child.stderr?.on('data', (chunk) => {
+      stderr += chunk;
+    });
+    child.on('error', reject);
+    child.on('close', (code, signal) => {
+      if (signal) reject(new Error(`Command killed (${signal})`));
+      else if (code !== 0) {
+        const msg = stderr.trim() || stdout.trim() || `Command exited with code ${code}`;
+        reject(new Error(msg));
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+  });
+}
+
+export function runWithInput(cmd, args, input, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(cmd, args, {
+      stdio: ['pipe', opts.stdio ?? 'inherit', opts.stdio ?? 'inherit'],
+      shell: false,
+      cwd: opts.cwd,
+      env: { ...process.env, ...opts.env },
+    });
+    child.on('error', reject);
+    if (input !== undefined && input !== null) child.stdin.write(input);
+    child.stdin.end();
+    child.on('close', (code, signal) => {
+      if (signal) reject(new Error(`Command killed (${signal})`));
+      else if (code !== 0) reject(new Error(`Command exited with code ${code}`));
+      else resolve();
+    });
+  });
+}
+
 export async function whichAvailable(cmd) {
   return new Promise((resolve) => {
     const child = spawn(process.platform === 'win32' ? 'where' : 'which', [cmd], {

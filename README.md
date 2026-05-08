@@ -12,7 +12,7 @@ CLI for scaffolding and day-to-day operations on small backend services (NestJS,
 - **Node.js 18+**
 - For generated services and several commands: **Docker** (with Compose v2: `docker compose`)
 - For **Go** scaffolds: **Go 1.22+** on your `PATH` is recommended — Forgeops runs **`go mod tidy`** after create when `go` is available so modules and `go.sum` are consistent.
-- Optional: **Pulumi** (`provision` / `destroy`), **GitHub CLI** (`gh`, for `delete --remove-repo` hints), **curl** (for `metrics` if you prefer it over Node’s `fetch`)
+- Optional: **Pulumi** (`provision` / `destroy` / Pulumi-backed `deploy`), **AWS CLI** (for Pulumi-backed `deploy` to ECR/ECS), **GitHub CLI** (`gh`, for `delete --remove-repo` hints and CI triggers), **curl** (for `metrics` if you prefer it over Node’s `fetch`)
 - Optional: **git** and a **GitHub personal access token** (`GITHUB_TOKEN` or `GH_TOKEN`) when using `create service --github` to create a remote repository and push
 
 ## Install
@@ -208,7 +208,7 @@ So you can work inside the repo directory without registering, or rely on the re
 
 - `forgeops build <name>` — `docker build` in the service root.
 - `forgeops run <name>` — `docker compose up` (add `-d` / `--detach` to run in the background).
-- `forgeops deploy <name>` — prints CI guidance when a GitHub workflow exists; always tries a local `docker build` if Docker is available.
+- `forgeops deploy <name> --env <dev|staging|prod>` — for services created with `--infra pulumi`, provisions the target Pulumi stack if needed, builds and pushes an image to ECR, updates the ECS service, and can wait for rollout with `--wait`. For services without Pulumi infra, it falls back to triggering GitHub Actions (when available) and a local `docker build`.
 
 ### Infrastructure (Pulumi)
 
@@ -245,8 +245,8 @@ So you can work inside the repo directory without registering, or rely on the re
 - **`FORGEOPS_*.md`** — short docs when relevant: `FORGEOPS_AUTH.md`, `FORGEOPS_OAUTH.md`, `FORGEOPS_MESSAGING.md`, `FORGEOPS_DATABASE.md`, `FORGEOPS_OBSERVE.md`.
 - **Project readme** — run instructions, feature list, and endpoint table for the template.
 - **`Dockerfile`** — language-specific image build.
-- **CI** — **GitHub:** `.github/workflows/ci.yml` with jobs for **test**, **Docker build/push** to **GHCR** (`ghcr.io/<owner>/<repo>:latest` on pushes to `main`), and **manual workflow_dispatch** deploy placeholders for **dev / staging / prod** (replace echo steps with your deploy). **GitLab:** `.gitlab-ci.yml` with test, docker build, and manual deploy stages.
-- **`infra/`** — when `--infra pulumi`, an **AWS-oriented** Pulumi TypeScript project (`templates/_pulumi-aws`): default VPC wiring, S3, ECR, ECS cluster, RDS (Postgres), DynamoDB table, random DB password (review before production).
+- **CI** — **GitHub:** `.github/workflows/ci.yml` with jobs for **test**, **Docker build/push** to **GHCR** (`ghcr.io/<owner>/<repo>:latest` on pushes to `main`). When the service was created with `--infra pulumi`, the manual **dev / staging / prod** deploy jobs run `forgeops deploy . --env ... --wait`; otherwise they remain explicit placeholders. **GitLab:** `.gitlab-ci.yml` follows the same pattern.
+- **`infra/`** — when `--infra pulumi`, an **AWS-oriented** Pulumi TypeScript project (`templates/_pulumi-aws`) that now provisions the deploy path too: default VPC wiring, S3, ECR, ECS cluster, ALB, ECS service/task definition, optional RDS (Postgres), DynamoDB table, and deployment outputs such as the service URL.
 
 ## Using Forgeops from Node.js (advanced)
 
