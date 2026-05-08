@@ -15,6 +15,14 @@ function parseArch(raw) {
   return a;
 }
 
+function parseAgent(raw) {
+  const agent = String(raw || 'none').toLowerCase();
+  if (['none', 'codex', 'cursor', 'claude'].includes(agent)) {
+    return agent;
+  }
+  throw new Error(`Unsupported --agent "${raw}". Use "codex", "cursor", "claude", or "none".`);
+}
+
 export async function resolveCreateOptions(opts, command) {
   const fromCli = (k) => command.getOptionValueSource(k) === 'cli';
   const interactive =
@@ -59,6 +67,11 @@ export async function resolveCreateOptions(opts, command) {
     let infra = fromCli('infra') ? opts.infra : undefined;
     if (infra === undefined) {
       infra = await chooseFromList('Infra:', ['none', 'pulumi'], 0);
+    }
+
+    let aiAgent = fromCli('agent') ? parseAgent(opts.agent) : undefined;
+    if (aiAgent === undefined) {
+      aiAgent = await chooseFromList('LLM agent setup:', ['codex', 'cursor', 'claude', 'none'], 0);
     }
 
     let port;
@@ -129,6 +142,7 @@ export async function resolveCreateOptions(opts, command) {
       messaging,
       ci,
       infra,
+      aiAgent,
       port,
       architecture,
       auth,
@@ -162,6 +176,7 @@ export async function resolveCreateOptions(opts, command) {
     messaging: opts.messaging ?? 'none',
     ci: opts.ci ?? 'github',
     infra: opts.infra ?? 'none',
+    aiAgent: parseAgent(opts.agent),
     port,
     architecture,
     auth: Boolean(opts.auth),

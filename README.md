@@ -101,7 +101,7 @@ node bin/forgeops.js --help
 
 ## Quick start
 
-Create a service. With a TTY and no `--no-interactive` flag, Forgeops **prompts** for template, database, messaging, CI, infra, port, JWT/RBAC, GraphQL (NestJS), OAuth placeholders, Redis, OpenTelemetry, and GitHub push. Pass flags to skip prompts.
+Create a service. With a TTY and no `--no-interactive` flag, Forgeops **prompts** for template, database, messaging, CI, infra, preferred LLM agent, port, JWT/RBAC, GraphQL (NestJS), OAuth placeholders, Redis, OpenTelemetry, and GitHub push. Pass flags to skip prompts.
 
 ```bash
 forgeops create service payments
@@ -169,6 +169,7 @@ forgeops create service <name> [options]
 | `--no-observe` | Skip OpenTelemetry tracing scaffolding (default is on). |
 | `--ci <provider>` | `github`, `gitlab`, or `none`. |
 | `--infra <tool>` | `pulumi` (AWS starter in `infra/`) or `none`. |
+| `--agent <id>` | `codex`, `cursor`, `claude`, or `none`. Scaffolds agent-specific rule files plus shared `AGENTS.*.md` playbooks. |
 | `--output <dir>` | Parent directory for the new service folder (default: current directory). |
 | `--repo <url>` | Optional repo URL stored in the registry and `.forgeops.json` (overridden if `--github` succeeds). |
 | `--github` | Create a GitHub repo and push the scaffold (requires `GITHUB_TOKEN` / `GH_TOKEN` and **git**). |
@@ -243,6 +244,7 @@ So you can work inside the repo directory without registering, or rely on the re
 - **`.env`** — port, `LOG_FORMAT`, optional `DATABASE_URL`, messaging brokers, `JWT_*` when `--auth`, OAuth keys when `--oauth`, `REDIS_URL` when `--redis`, `OTEL_*` when observability scaffolding is enabled (`--no-observe` turns off OTEL fragments and extra env keys).
 - **`docker-compose.yml`** — app service (`env_file: .env`) plus optional Postgres, MongoDB, Kafka/Zookeeper, RabbitMQ, **Redis** (`--redis`).
 - **`FORGEOPS_*.md`** — short docs when relevant: `FORGEOPS_AUTH.md`, `FORGEOPS_OAUTH.md`, `FORGEOPS_MESSAGING.md`, `FORGEOPS_DATABASE.md`, `FORGEOPS_OBSERVE.md`.
+- **Agent guidance** — when `--agent codex|cursor|claude` is used, Forgeops adds agent-specific files (`.codex/`, `.cursor/rules/`, `.claude/`) and shared operating docs such as `AGENTS.review.md`, `AGENTS.testing.md`, `AGENTS.ci.md`, and `AGENTS.nextjs.md`.
 - **Project readme** — run instructions, feature list, and endpoint table for the template.
 - **`Dockerfile`** — language-specific image build.
 - **CI** — **GitHub:** `.github/workflows/ci.yml` with jobs for **test**, **Docker build/push** to **GHCR** (`ghcr.io/<owner>/<repo>:latest` on pushes to `main`). When the service was created with `--infra pulumi`, the manual **dev / staging / prod** deploy jobs run `forgeops deploy . --env ... --wait`; otherwise they remain explicit placeholders. **GitLab:** `.gitlab-ci.yml` follows the same pattern.

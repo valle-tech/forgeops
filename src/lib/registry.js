@@ -113,6 +113,7 @@ function manifestToEntry(m, root) {
     architecture: m.architecture,
     ci: m.ci,
     infra: m.infra,
+    aiAgent: m.aiAgent,
     httpPort: m.httpPort ?? m.port,
     repoUrl: m.repoUrl,
     template: m.template,

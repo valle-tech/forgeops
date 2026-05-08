@@ -15,6 +15,7 @@ import {
   writeObserveExtras,
 } from './extras.js';
 import { writeGeneratedReadme } from './readme.js';
+import { writeAgentGuides } from './agents.js';
 import { buildReplacements } from './scaffold-vars.js';
 import {
   normalizeName,
@@ -55,6 +56,7 @@ export function projectVarsFromManifest(cfg) {
     auth: Boolean(cfg.auth),
     ci: String(cfg.ci || 'github').toLowerCase(),
     infra: String(cfg.infra || 'none').toLowerCase(),
+    aiAgent: String(cfg.aiAgent || 'none').toLowerCase(),
     modulePath,
     dbConnUrl: dbConn,
     graphql: Boolean(cfg.graphql),
@@ -144,6 +146,7 @@ export async function scaffoldService(opts) {
     auth: !!opts.auth,
     ci,
     infra,
+    aiAgent: String(opts.aiAgent || 'none').toLowerCase(),
     modulePath,
     dbConnUrl: dbConn,
     graphql,
@@ -177,6 +180,9 @@ export async function scaffoldService(opts) {
     await writeDatabaseExtras(dest, vars);
   }
   if (vars.observe !== false) await writeObserveExtras(dest, vars);
+  if (vars.aiAgent && vars.aiAgent !== 'none') {
+    await writeAgentGuides(dest, vars, templateId);
+  }
 
   await writeFile(path.join(dest, '.env'), buildEnvFile(vars), 'utf8');
 
@@ -196,6 +202,7 @@ export async function scaffoldService(opts) {
     architecture: vars.architecture,
     ci,
     infra,
+    aiAgent: vars.aiAgent,
     repoUrl: opts.repoUrl || '',
     rootPath: dest,
   });

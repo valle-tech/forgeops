@@ -32,6 +32,7 @@ export function normalizeProjectConfig(j) {
     architecture: j.architecture,
     ci: j.ci,
     infra: j.infra,
+    aiAgent: j.aiAgent ?? 'none',
     repoUrl: j.repoUrl,
     rootPath: j.rootPath,
   };
@@ -78,6 +79,7 @@ export async function writeProjectConfig(dir, data) {
     architecture: data.architecture ?? 'clean',
     ci: data.ci ?? 'github',
     infra: data.infra ?? 'none',
+    aiAgent: data.aiAgent ?? 'none',
     repoUrl: data.repoUrl || '',
     createdAt: data.createdAt || new Date().toISOString(),
   };

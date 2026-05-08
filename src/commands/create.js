@@ -19,6 +19,7 @@ export function registerCreateCommands(program) {
     .option('--messaging <m>', 'kafka | rabbitmq | none')
     .option('--ci <provider>', 'github | gitlab | none')
     .option('--infra <tool>', 'pulumi | none')
+    .option('--agent <id>', 'codex | cursor | claude | none')
     .option('--template <id>', 'Template id (e.g. nestjs-clean, go-clean, python-clean)')
     .option('--port <n>', 'HTTP port (host and container)')
     .option('--arch <name>', 'Architecture preset (only: clean)', 'clean')
@@ -53,6 +54,7 @@ export function registerCreateCommands(program) {
         architecture: o.architecture,
         ci: o.ci,
         infra: o.infra,
+        aiAgent: o.aiAgent,
         repoUrl: opts.repo || '',
         templateId: o.template,
         port: o.port,
@@ -111,6 +113,7 @@ export function registerCreateCommands(program) {
         architecture: vars.architecture,
         ci: vars.ci,
         infra: vars.infra,
+        aiAgent: o.aiAgent,
         httpPort: vars.port,
         repoUrl,
         template: templateId,

@@ -19,4 +19,5 @@ export {
 export { writeGitHubCI, writeGitLabCI } from './ci.js';
 export { writeDockerCompose, manifestToComposeVars, regenerateDockerCompose } from './compose.js';
 export { writeMessagingExtras, writeDatabaseExtras, writeAuthExtras } from './extras.js';
+export { writeAgentGuides } from './agents.js';
 export { listAllTemplateIds } from './shared.js';

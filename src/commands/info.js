@@ -29,6 +29,7 @@ export function registerInfoCommands(program) {
       const auth = m.auth ?? entry?.auth;
       const graphql = m.graphql ?? entry?.graphql;
       const observe = m.observe ?? entry?.observe;
+      const aiAgent = m.aiAgent ?? entry?.aiAgent;
       const features = Array.isArray(m.features) ? m.features.join(', ') : '—';
 
       console.log(`template   ${template}`);
@@ -39,6 +40,7 @@ export function registerInfoCommands(program) {
       if (auth) console.log(`auth       jwt`);
       if (graphql) console.log(`graphql    on`);
       if (observe === false) console.log(`observe    off`);
+      if (aiAgent && aiAgent !== 'none') console.log(`agent      ${aiAgent}`);
       console.log(`path       ${root}`);
       if (features !== '—') console.log(`features   ${features}`);
 
