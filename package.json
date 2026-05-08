@@ -1,6 +1,6 @@
 {
   "name": "forgeops",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "CLI for scaffolding and operating IDP-style microservices",
   "type": "module",
   "license": "MIT",
